@@ -440,37 +440,42 @@ export function AppProvider({ children }) {
   // ============================================
   const updateSendPlans = async (plans) => {
     setSendPlans(plans);
-    // Delete existing and re-insert
-    await supabase.from('send_plans').delete().neq('id', '');
+    const { error: delErr } = await supabase.from('send_plans').delete().neq('id', '');
+    if (delErr) console.error('Erro ao deletar planos:', delErr.message);
     const rows = plans.map((p, i) => ({
       id: p.id, name: p.name, credits: p.credits,
       price: p.price, active: p.active, popular: p.popular, sort_order: i,
     }));
-    await supabase.from('send_plans').insert(rows);
+    const { error: insErr } = await supabase.from('send_plans').insert(rows);
+    if (insErr) console.error('Erro ao inserir planos:', insErr.message);
   };
 
   const updateAutoDispatchConfig = async (config) => {
     const merged = { ...autoDispatchConfig, ...config };
     setAutoDispatchConfig(merged);
-    await supabase.from('dispatch_config').upsert({ id: 1, config: merged, updated_at: new Date().toISOString() });
+    const { error } = await supabase.from('dispatch_config').upsert({ id: 1, config: merged, updated_at: new Date().toISOString() });
+    if (error) console.error('Erro ao salvar dispatch config:', error.message);
   };
 
   const updateUpsellTexts = async (texts) => {
     const merged = { ...upsellTexts, ...texts };
     setUpsellTexts(merged);
-    await supabase.from('upsell_texts').upsert({ id: 1, config: merged, updated_at: new Date().toISOString() });
+    const { error } = await supabase.from('upsell_texts').upsert({ id: 1, config: merged, updated_at: new Date().toISOString() });
+    if (error) console.error('Erro ao salvar upsell texts:', error.message);
   };
 
   const updateSiteConfig = async (updates) => {
     const merged = { ...siteConfig, ...updates };
     setSiteConfig(merged);
-    await supabase.from('site_config').upsert({ id: 1, config: merged, updated_at: new Date().toISOString() });
+    const { error } = await supabase.from('site_config').upsert({ id: 1, config: merged, updated_at: new Date().toISOString() });
+    if (error) console.error('Erro ao salvar site config:', error.message);
   };
 
   const updateRotationConfig = async (updates) => {
     const merged = { ...rotationConfig, ...updates };
     setRotationConfig(merged);
-    await supabase.from('rotation_config').upsert({ id: 1, config: merged, updated_at: new Date().toISOString() });
+    const { error } = await supabase.from('rotation_config').upsert({ id: 1, config: merged, updated_at: new Date().toISOString() });
+    if (error) console.error('Erro ao salvar rotation config:', error.message);
   };
 
   const updateSocialProofConfig = async (updates) => {
@@ -478,7 +483,8 @@ export function AppProvider({ children }) {
       ? { ...updates }
       : { ...socialProofConfig, ...updates };
     setSocialProofConfig(merged);
-    await supabase.from('social_proof_config').upsert({ id: 1, config: merged, updated_at: new Date().toISOString() });
+    const { error } = await supabase.from('social_proof_config').upsert({ id: 1, config: merged, updated_at: new Date().toISOString() });
+    if (error) console.error('Erro ao salvar social proof config:', error.message);
   };
 
   // ============================================
