@@ -78,21 +78,25 @@ export default function SupportWidget() {
     return () => clearInterval(fallbackCheckRef.current);
   }, [conv?.id, checkFallback]);
 
-  const handleOpen = () => {
-    getOrCreateConversation();
+  const handleOpen = async () => {
     setOpen(true);
+    await getOrCreateConversation();
   };
 
-  const handleSend = useCallback((msgText) => {
+  const handleSend = useCallback(async (msgText) => {
     const finalText = msgText || text;
     if (!finalText.trim() || !conv) return;
-    sendMessage(conv.id, finalText.trim(), 'user');
+    await sendMessage(conv.id, finalText.trim(), 'user');
     setText('');
   }, [text, conv, sendMessage]);
 
-  const handleQuickReply = (qr) => {
-    if (!conv) return;
-    sendMessage(conv.id, qr.text, 'user');
+  const handleQuickReply = async (qr) => {
+    if (!conv) {
+      const c = await getOrCreateConversation();
+      if (c) await sendMessage(c.id, qr.text, 'user');
+      return;
+    }
+    await sendMessage(conv.id, qr.text, 'user');
   };
 
   const handleKeyDown = (e) => {

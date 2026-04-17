@@ -41,9 +41,9 @@ export default function TicketManager() {
     if (selectedConvId) setTimeout(() => inputRef.current?.focus(), 100);
   }, [selectedConvId]);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!text.trim() || !selectedConvId) return;
-    sendMessage(selectedConvId, text.trim(), 'admin');
+    await sendMessage(selectedConvId, text.trim(), 'admin');
     setText('');
   };
 
