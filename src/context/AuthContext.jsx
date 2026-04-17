@@ -76,6 +76,7 @@ export function AuthProvider({ children }) {
   // Initialize: check existing session + listen for auth changes
   useEffect(() => {
     mountedRef.current = true;
+    let initialSessionHandled = false;
 
     // Get initial session
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -84,21 +85,32 @@ export function AuthProvider({ children }) {
         if (mountedRef.current) setUser(profile);
       }
       if (mountedRef.current) setLoading(false);
+      initialSessionHandled = true;
     });
 
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      // Skip INITIAL_SESSION — already handled by getSession above
+      if (event === 'INITIAL_SESSION') return;
+
       if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
-        // Wait a bit for the trigger to create the profile
-        await new Promise((r) => setTimeout(r, 800));
+        // On TOKEN_REFRESHED (page reload), just fetch profile quickly
+        if (event === 'TOKEN_REFRESHED') {
+          const profile = await fetchProfile(session.user.id);
+          if (mountedRef.current) {
+            setUser(profile);
+            setLoading(false);
+          }
+          return;
+        }
+        // On SIGNED_IN (new login), wait for trigger to create profile
+        await new Promise((r) => setTimeout(r, 600));
         let profile = await fetchProfile(session.user.id);
-        // If profile still doesn't exist (e.g. Google OAuth where trigger might not set nome)
         if (!profile) {
-          // Retry after a longer wait
-          await new Promise((r) => setTimeout(r, 1500));
+          await new Promise((r) => setTimeout(r, 1200));
           profile = await fetchProfile(session.user.id);
         }
-        // Update profile with Google metadata if nome is empty
+        // Fill Google metadata if nome is empty
         if (profile && !profile.nome && session.user.user_metadata) {
           const meta = session.user.user_metadata;
           const googleName = meta.full_name || meta.name || '';
@@ -110,7 +122,10 @@ export function AuthProvider({ children }) {
             profile = { ...profile, nome: googleName, fotoPerfil: googleAvatar || profile.fotoPerfil };
           }
         }
-        if (mountedRef.current) setUser(profile);
+        if (mountedRef.current) {
+          setUser(profile);
+          setLoading(false);
+        }
       } else if (event === 'SIGNED_OUT') {
         if (mountedRef.current) setUser(null);
       }
