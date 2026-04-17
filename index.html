@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <script type="module">
+      import RefreshRuntime from '/@react-refresh'
+      RefreshRuntime.injectIntoGlobalHook(window)
+      window.$RefreshReg$ = () => {}
+      window.$RefreshSig$ = () => (type) => type
+      window.__vite_plugin_react_preamble_installed__ = true
+    </script>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Emprega+ | Plataforma de Empregabilidade</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@400;500;600;700&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      window.addEventListener('error', function(e) {
+        document.getElementById('root').innerHTML =
+          '<div style="padding:40px;color:red;font-family:monospace;background:#1a1a2e;min-height:100vh">' +
+          '<h2>⚠️ Erro capturado:</h2><pre style="white-space:pre-wrap;color:#ff6b6b">' +
+          (e.message || 'unknown') + '\n\nArquivo: ' + (e.filename || '?') +
+          '\nLinha: ' + (e.lineno || '?') + '</pre></div>';
+      });
+      window.addEventListener('unhandledrejection', function(e) {
+        document.getElementById('root').innerHTML =
+          '<div style="padding:40px;color:red;font-family:monospace;background:#1a1a2e;min-height:100vh">' +
+          '<h2>⚠️ Promise rejeitada:</h2><pre style="white-space:pre-wrap;color:#ff6b6b">' +
+          (e.reason?.message || e.reason || 'unknown') + '\n\n' +
+          (e.reason?.stack || '') + '</pre></div>';
+      });
+    </script>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

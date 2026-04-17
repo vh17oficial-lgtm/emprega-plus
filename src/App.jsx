@@ -1,0 +1,55 @@
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { AppProvider } from './context/AppContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { SupportProvider } from './context/SupportContext';
+import LandingPage from './pages/LandingPage';
+import UserDashboard from './pages/UserDashboard';
+import AdminPanel from './pages/AdminPanel';
+import LoginPage from './pages/LoginPage';
+import TopographyBackground from './components/common/TopographyBackground';
+import SupportWidget from './components/common/SupportWidget';
+
+function ProtectedRoute({ children }) {
+  const { isLoggedIn } = useAuth();
+  const location = useLocation();
+  if (!isLoggedIn) return <Navigate to="/login" state={{ from: location }} replace />;
+  return children;
+}
+
+const bgPresets = {
+  '/': { backgroundColor: '#0c1122', lineColor: 'rgba(99, 130, 255, 0.10)', lineCount: 18 },
+  '/login': { backgroundColor: '#0a0e1f', lineColor: 'rgba(99, 130, 255, 0.12)', lineCount: 20 },
+  '/usuario': { backgroundColor: '#f0f2f7', lineColor: 'rgba(99, 130, 200, 0.06)', lineCount: 14, strokeWidth: 0.6 },
+  '/admin': { backgroundColor: '#f0f2f7', lineColor: 'rgba(99, 130, 200, 0.06)', lineCount: 14, strokeWidth: 0.6 },
+};
+
+function AppBackground() {
+  const location = useLocation();
+  const preset = bgPresets[location.pathname] || bgPresets['/'];
+  return <TopographyBackground {...preset} speed={0.5} />;
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppProvider>
+        <SupportProvider>
+          <BrowserRouter>
+            <AppBackground />
+            <div className="relative z-10">
+              <Routes>
+                <Route path="/" element={<LandingPage />} />
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/usuario" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
+                <Route path="/admin" element={<AdminPanel />} />
+              </Routes>
+            </div>
+            <SupportWidget />
+          </BrowserRouter>
+        </SupportProvider>
+      </AppProvider>
+    </AuthProvider>
+  );
+}
+
+export default App;
