@@ -1,9 +1,35 @@
 -- =============================================
--- FIX ALL RLS POLICIES - Drop old recursive ones
+-- FIX ALL RLS POLICIES - NUCLEAR RESET
 -- Execute no SQL Editor do Supabase Dashboard
+-- This drops ALL existing policies and recreates from scratch
 -- =============================================
 
--- 1. Ensure is_admin() function exists
+-- 1. Drop ALL policies from ALL tables automatically
+DO $$
+DECLARE
+  _tbl text;
+  _pol text;
+BEGIN
+  FOR _tbl IN
+    SELECT tablename FROM pg_tables WHERE schemaname = 'public'
+    AND tablename IN (
+      'profiles','jobs','applications','resumes',
+      'chat_conversations','chat_messages',
+      'site_config','send_plans','dispatch_config','upsell_texts',
+      'companies','testimonials','videos',
+      'social_proof_config','rotation_config'
+    )
+  LOOP
+    FOR _pol IN
+      SELECT policyname FROM pg_policies WHERE schemaname = 'public' AND tablename = _tbl
+    LOOP
+      EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', _pol, _tbl);
+    END LOOP;
+  END LOOP;
+END
+$$;
+
+-- 2. Ensure is_admin() function exists (SECURITY DEFINER bypasses RLS)
 CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS boolean AS $$
   SELECT EXISTS (
@@ -13,112 +39,87 @@ RETURNS boolean AS $$
 $$ LANGUAGE sql SECURITY DEFINER STABLE;
 
 -- =============================================
--- 2. PROFILES - fix admin policies
+-- 3. PROFILES
 -- =============================================
-DROP POLICY IF EXISTS "Admins can view all profiles" ON public.profiles;
-DROP POLICY IF EXISTS "Admins can update any profile" ON public.profiles;
+CREATE POLICY "Users can view own profile" ON public.profiles FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
 CREATE POLICY "Admins can view all profiles" ON public.profiles FOR SELECT USING (public.is_admin());
 CREATE POLICY "Admins can update any profile" ON public.profiles FOR UPDATE USING (public.is_admin());
 
 -- =============================================
--- 3. JOBS - fix admin policies
+-- 4. JOBS (anyone can read, admins manage)
 -- =============================================
-DROP POLICY IF EXISTS "Admins can insert jobs" ON public.jobs;
-DROP POLICY IF EXISTS "Admins can update jobs" ON public.jobs;
-DROP POLICY IF EXISTS "Admins can delete jobs" ON public.jobs;
-CREATE POLICY "Admins can insert jobs" ON public.jobs FOR INSERT WITH CHECK (public.is_admin());
-CREATE POLICY "Admins can update jobs" ON public.jobs FOR UPDATE USING (public.is_admin());
-CREATE POLICY "Admins can delete jobs" ON public.jobs FOR DELETE USING (public.is_admin());
+CREATE POLICY "Anyone can view jobs" ON public.jobs FOR SELECT USING (true);
+CREATE POLICY "Admins can manage jobs" ON public.jobs FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
 
 -- =============================================
--- 4. APPLICATIONS
+-- 5. APPLICATIONS
 -- =============================================
-DROP POLICY IF EXISTS "Admins can view all applications" ON public.applications;
-DROP POLICY IF EXISTS "Admins can update all applications" ON public.applications;
-CREATE POLICY "Admins can view all applications" ON public.applications FOR SELECT USING (public.is_admin());
-CREATE POLICY "Admins can update all applications" ON public.applications FOR UPDATE USING (public.is_admin());
+CREATE POLICY "Users can view own applications" ON public.applications FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own applications" ON public.applications FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own applications" ON public.applications FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Admins can manage applications" ON public.applications FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
 
 -- =============================================
--- 5. RESUMES
+-- 6. RESUMES
 -- =============================================
-DROP POLICY IF EXISTS "Admins can view all resumes" ON public.resumes;
+CREATE POLICY "Users can view own resumes" ON public.resumes FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own resumes" ON public.resumes FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own resumes" ON public.resumes FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete own resumes" ON public.resumes FOR DELETE USING (auth.uid() = user_id);
 CREATE POLICY "Admins can view all resumes" ON public.resumes FOR SELECT USING (public.is_admin());
 
 -- =============================================
--- 6. CHAT
+-- 7. CHAT
 -- =============================================
-DROP POLICY IF EXISTS "Admins can view all conversations" ON public.chat_conversations;
-DROP POLICY IF EXISTS "Admins can update all conversations" ON public.chat_conversations;
-CREATE POLICY "Admins can view all conversations" ON public.chat_conversations FOR SELECT USING (public.is_admin());
-CREATE POLICY "Admins can update all conversations" ON public.chat_conversations FOR UPDATE USING (public.is_admin());
+CREATE POLICY "Users can view own conversations" ON public.chat_conversations FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own conversations" ON public.chat_conversations FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own conversations" ON public.chat_conversations FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Admins can manage conversations" ON public.chat_conversations FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
 
-DROP POLICY IF EXISTS "Admins can view all messages" ON public.chat_messages;
-DROP POLICY IF EXISTS "Admins can insert messages" ON public.chat_messages;
-DROP POLICY IF EXISTS "Admins can send messages" ON public.chat_messages;
-CREATE POLICY "Admins can insert messages" ON public.chat_messages FOR SELECT USING (public.is_admin());
-CREATE POLICY "Admins can send messages" ON public.chat_messages FOR INSERT WITH CHECK (public.is_admin());
+CREATE POLICY "Users can view own messages" ON public.chat_messages FOR SELECT USING (
+  EXISTS (SELECT 1 FROM public.chat_conversations WHERE id = chat_messages.conversation_id AND user_id = auth.uid())
+);
+CREATE POLICY "Users can insert own messages" ON public.chat_messages FOR INSERT WITH CHECK (
+  EXISTS (SELECT 1 FROM public.chat_conversations WHERE id = chat_messages.conversation_id AND user_id = auth.uid())
+);
+CREATE POLICY "Admins can manage messages" ON public.chat_messages FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
 
 -- =============================================
--- 7. SITE CONFIG - drop ALL old policies, recreate with is_admin()
+-- 8. PUBLIC CONFIG TABLES (anyone reads, admins manage)
 -- =============================================
-DROP POLICY IF EXISTS "Admins can update site_config" ON public.site_config;
-DROP POLICY IF EXISTS "Admins can insert site_config" ON public.site_config;
-DROP POLICY IF EXISTS "Admins can manage config" ON public.site_config;
+-- Site Config
+CREATE POLICY "Anyone can read site_config" ON public.site_config FOR SELECT USING (true);
 CREATE POLICY "Admins can manage site_config" ON public.site_config FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
 
--- =============================================
--- 8. SEND PLANS - drop ALL old policies, recreate
--- =============================================
-DROP POLICY IF EXISTS "Admins can manage send_plans" ON public.send_plans;
-DROP POLICY IF EXISTS "Admins can manage plans" ON public.send_plans;
+-- Send Plans
+CREATE POLICY "Anyone can read send_plans" ON public.send_plans FOR SELECT USING (true);
 CREATE POLICY "Admins can manage send_plans" ON public.send_plans FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
 
--- =============================================
--- 9. DISPATCH CONFIG
--- =============================================
-DROP POLICY IF EXISTS "Admins can update dispatch_config" ON public.dispatch_config;
-DROP POLICY IF EXISTS "Admins can insert dispatch_config" ON public.dispatch_config;
-DROP POLICY IF EXISTS "Admins can manage dispatch config" ON public.dispatch_config;
+-- Dispatch Config
+CREATE POLICY "Anyone can read dispatch_config" ON public.dispatch_config FOR SELECT USING (true);
 CREATE POLICY "Admins can manage dispatch_config" ON public.dispatch_config FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
 
--- =============================================
--- 10. UPSELL TEXTS
--- =============================================
-DROP POLICY IF EXISTS "Admins can update upsell_texts" ON public.upsell_texts;
-DROP POLICY IF EXISTS "Admins can insert upsell_texts" ON public.upsell_texts;
-DROP POLICY IF EXISTS "Admins can manage upsell texts" ON public.upsell_texts;
+-- Upsell Texts
+CREATE POLICY "Anyone can read upsell_texts" ON public.upsell_texts FOR SELECT USING (true);
 CREATE POLICY "Admins can manage upsell_texts" ON public.upsell_texts FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
 
--- =============================================
--- 11. COMPANIES
--- =============================================
-DROP POLICY IF EXISTS "Admins can manage companies" ON public.companies;
+-- Companies
+CREATE POLICY "Anyone can read companies" ON public.companies FOR SELECT USING (true);
 CREATE POLICY "Admins can manage companies" ON public.companies FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
 
--- =============================================
--- 12. TESTIMONIALS
--- =============================================
-DROP POLICY IF EXISTS "Admins can manage testimonials" ON public.testimonials;
+-- Testimonials
+CREATE POLICY "Anyone can read testimonials" ON public.testimonials FOR SELECT USING (true);
 CREATE POLICY "Admins can manage testimonials" ON public.testimonials FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
 
--- =============================================
--- 13. VIDEOS
--- =============================================
-DROP POLICY IF EXISTS "Admins can manage videos" ON public.videos;
+-- Videos
+CREATE POLICY "Anyone can read videos" ON public.videos FOR SELECT USING (true);
 CREATE POLICY "Admins can manage videos" ON public.videos FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
 
--- =============================================
--- 14. SOCIAL PROOF CONFIG
--- =============================================
-DROP POLICY IF EXISTS "Admins can update social_proof_config" ON public.social_proof_config;
-DROP POLICY IF EXISTS "Admins can insert social_proof_config" ON public.social_proof_config;
-DROP POLICY IF EXISTS "Admins can manage social proof" ON public.social_proof_config;
+-- Social Proof Config
+CREATE POLICY "Anyone can read social_proof_config" ON public.social_proof_config FOR SELECT USING (true);
 CREATE POLICY "Admins can manage social_proof_config" ON public.social_proof_config FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
 
--- =============================================
--- 15. ROTATION CONFIG
--- =============================================
-DROP POLICY IF EXISTS "Admins can update rotation_config" ON public.rotation_config;
-DROP POLICY IF EXISTS "Admins can insert rotation_config" ON public.rotation_config;
-DROP POLICY IF EXISTS "Admins can manage rotation" ON public.rotation_config;
+-- Rotation Config
+CREATE POLICY "Anyone can read rotation_config" ON public.rotation_config FOR SELECT USING (true);
 CREATE POLICY "Admins can manage rotation_config" ON public.rotation_config FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
