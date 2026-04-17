@@ -9,11 +9,10 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    flowType: 'pkce',
     detectSessionInUrl: true,
     persistSession: true,
     autoRefreshToken: true,
-    // Disable navigator locks to prevent "lock stolen" errors
+    // Disable navigator locks to prevent "lock stolen" errors on PC
     lock: (name, acquireTimeout, fn) => fn(),
   },
 });
