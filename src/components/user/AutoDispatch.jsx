@@ -90,14 +90,14 @@ export default function AutoDispatch() {
 
     const companies = filteredUnapplied.slice(0, actualCount);
     let current = 0;
-    const interval = setInterval(() => {
+    const interval = setInterval(async () => {
       setCurrentCompany(companies[current]?.company || '');
       current++;
       setProgress(current);
       if (current >= actualCount) {
         clearInterval(interval);
         consumeDailyDispatch(actualCount);
-        const applied = bulkApply(actualCount, filterFn);
+        const applied = await bulkApply(actualCount, filterFn);
         setDispatching(false);
         setResult(applied);
         setCurrentCompany('');

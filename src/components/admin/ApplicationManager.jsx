@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useAppContext } from '../../context/AppContext';
 
 const STATUS_OPTIONS = [
@@ -9,24 +9,32 @@ const STATUS_OPTIONS = [
 ];
 
 export default function ApplicationManager() {
-  const { getAllApplications, getUserName, updateApplicationStatus, bulkUpdateApplicationStatus, jobs } = useAppContext();
+  const { getAllApplications, updateApplicationStatus, bulkUpdateApplicationStatus, jobs } = useAppContext();
   const [filterStatus, setFilterStatus] = useState('');
   const [filterJob, setFilterJob] = useState('');
   const [filterUser, setFilterUser] = useState('');
   const [selected, setSelected] = useState(new Set());
   const [bulkStatus, setBulkStatus] = useState('');
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [allApplications, setAllApplications] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const allApplications = useMemo(() => getAllApplications(), [refreshKey, jobs]); // eslint-disable-line
+  const loadApps = useCallback(async () => {
+    setLoading(true);
+    const data = await getAllApplications();
+    setAllApplications(data);
+    setLoading(false);
+  }, [getAllApplications]);
+
+  useEffect(() => { loadApps(); }, [loadApps]);
 
   const filtered = useMemo(() => {
     return allApplications.filter(app => {
       if (filterStatus && app.status !== filterStatus) return false;
       if (filterJob && app.jobId !== Number(filterJob)) return false;
-      if (filterUser && !getUserName(app.userId).toLowerCase().includes(filterUser.toLowerCase())) return false;
+      if (filterUser && !(app.userName || '').toLowerCase().includes(filterUser.toLowerCase())) return false;
       return true;
     });
-  }, [allApplications, filterStatus, filterJob, filterUser]); // eslint-disable-line
+  }, [allApplications, filterStatus, filterJob, filterUser]);
 
   const uniqueJobs = useMemo(() => {
     const map = new Map();
@@ -50,22 +58,22 @@ export default function ApplicationManager() {
     }
   };
 
-  const handleStatusChange = (userId, jobId, newStatus) => {
-    updateApplicationStatus(userId, jobId, newStatus);
-    setRefreshKey(k => k + 1);
+  const handleStatusChange = async (userId, jobId, newStatus) => {
+    await updateApplicationStatus(userId, jobId, newStatus);
+    loadApps();
   };
 
-  const handleBulkUpdate = () => {
+  const handleBulkUpdate = async () => {
     if (!bulkStatus || selected.size === 0) return;
     const updates = [];
     selected.forEach(key => {
       const [uid, jid] = key.split('_');
       updates.push({ userId: uid, jobId: Number(jid), newStatus: bulkStatus });
     });
-    bulkUpdateApplicationStatus(updates);
+    await bulkUpdateApplicationStatus(updates);
     setSelected(new Set());
     setBulkStatus('');
-    setRefreshKey(k => k + 1);
+    loadApps();
   };
 
   const getStatusBadge = (status) => {
@@ -185,7 +193,7 @@ export default function ApplicationManager() {
                       <td className="px-4 py-3">
                         <input type="checkbox" checked={selected.has(key)} onChange={() => toggleSelect(key)} className="rounded cursor-pointer" />
                       </td>
-                      <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{getUserName(app.userId)}</td>
+                      <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{app.userName || 'Usuário'}</td>
                       <td className="px-4 py-3 text-gray-700 max-w-[200px] truncate">{app.jobTitle}</td>
                       <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{app.jobCompany}</td>
                       <td className="px-4 py-3 text-gray-400 whitespace-nowrap text-xs">

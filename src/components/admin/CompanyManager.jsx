@@ -34,8 +34,8 @@ export default function CompanyManager() {
   const withLogo = draft.filter(c => c.logo).length;
   const activeCount = draft.filter(c => c.active).length;
 
-  const handleSave = () => {
-    updateCompanies(draft);
+  const handleSave = async () => {
+    await updateCompanies(draft);
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
   };

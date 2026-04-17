@@ -1,50 +1,79 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 
 export default function UserManager() {
   const { getAllUsers, adminUpdateUser } = useAuth();
-  const users = getAllUsers();
+  const [users, setUsers] = useState([]);
+  const [loadingUsers, setLoadingUsers] = useState(true);
   const [creditInputs, setCreditInputs] = useState({});
   const [limitInputs, setLimitInputs] = useState({});
   const [feedback, setFeedback] = useState({});
+
+  const loadUsers = useCallback(async () => {
+    setLoadingUsers(true);
+    const data = await getAllUsers();
+    setUsers(data);
+    setLoadingUsers(false);
+  }, [getAllUsers]);
+
+  useEffect(() => { loadUsers(); }, [loadUsers]);
 
   const showFeedback = (userId, msg) => {
     setFeedback((prev) => ({ ...prev, [userId]: msg }));
     setTimeout(() => setFeedback((prev) => ({ ...prev, [userId]: '' })), 2000);
   };
 
-  const handleAddCredits = (userId) => {
+  const handleAddCredits = async (userId) => {
     const amount = parseInt(creditInputs[userId]) || 0;
     if (amount <= 0) return;
     const user = users.find((u) => u.id === userId);
-    adminUpdateUser(userId, { sendCredits: (user.sendCredits || 0) + amount });
+    await adminUpdateUser(userId, { sendCredits: (user.sendCredits || 0) + amount });
     setCreditInputs((prev) => ({ ...prev, [userId]: '' }));
     showFeedback(userId, `+${amount} créditos adicionados`);
+    loadUsers();
   };
 
-  const handleToggleDispatch = (userId) => {
+  const handleToggleDispatch = async (userId) => {
     const user = users.find((u) => u.id === userId);
-    adminUpdateUser(userId, {
+    await adminUpdateUser(userId, {
       autoDispatchAccess: !user.autoDispatchAccess,
       dailyDispatchLimit: !user.autoDispatchAccess ? 10 : user.dailyDispatchLimit,
     });
     showFeedback(userId, user.autoDispatchAccess ? 'Disparador desativado' : 'Disparador ativado');
+    loadUsers();
   };
 
-  const handleSetLimit = (userId) => {
+  const handleSetLimit = async (userId) => {
     const limit = parseInt(limitInputs[userId]) || 0;
     if (limit <= 0) return;
-    adminUpdateUser(userId, { dailyDispatchLimit: limit });
+    await adminUpdateUser(userId, { dailyDispatchLimit: limit });
     setLimitInputs((prev) => ({ ...prev, [userId]: '' }));
     showFeedback(userId, `Limite alterado para ${limit}/dia`);
+    loadUsers();
   };
 
-  const handleSetUnlimited = (userId) => {
-    adminUpdateUser(userId, { dailyDispatchUnlimited: true });
+  const handleSetUnlimited = async (userId) => {
+    await adminUpdateUser(userId, { dailyDispatchUnlimited: true });
     showFeedback(userId, 'Limite ilimitado ativado');
+    loadUsers();
   };
 
   const inputClass = 'px-3 py-1.5 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none';
+
+  if (loadingUsers) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">Gestão de Usuários</h3>
+          <p className="text-sm text-gray-500 mt-1">Carregando...</p>
+        </div>
+        <div className="text-center py-12 text-gray-400">
+          <div className="animate-spin h-8 w-8 border-2 border-indigo-500 border-t-transparent rounded-full mx-auto mb-3" />
+          <p className="text-sm">Carregando usuários...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (users.length === 0) {
     return (

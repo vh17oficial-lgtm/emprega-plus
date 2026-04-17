@@ -53,7 +53,7 @@ export default function UserProfile() {
     reader.readAsDataURL(file);
   };
 
-  const handleSaveProfile = (e) => {
+  const handleSaveProfile = async (e) => {
     e.preventDefault();
     setProfileMsg(null);
     if (!nome.trim()) {
@@ -61,17 +61,20 @@ export default function UserProfile() {
       return;
     }
     setSavingProfile(true);
-    setTimeout(() => {
-      const result = updateProfile({ nome: nome.trim(), telefone, cidade, estado, fotoPerfil });
-      setSavingProfile(false);
+    try {
+      const result = await updateProfile({ nome: nome.trim(), telefone, cidade, estado, fotoPerfil });
       setProfileMsg(result.success
         ? { type: 'success', text: 'Dados salvos com sucesso!' }
         : { type: 'error', text: result.error });
       if (result.success) setTimeout(() => setProfileMsg(null), 3000);
-    }, 400);
+    } catch {
+      setProfileMsg({ type: 'error', text: 'Erro ao salvar. Tente novamente.' });
+    } finally {
+      setSavingProfile(false);
+    }
   };
 
-  const handleChangePassword = (e) => {
+  const handleChangePassword = async (e) => {
     e.preventDefault();
     setSenhaMsg(null);
     if (!senhaAtual || !novaSenha || !confirmarSenha) {
@@ -82,10 +85,13 @@ export default function UserProfile() {
       setSenhaMsg({ type: 'error', text: 'As senhas não conferem.' });
       return;
     }
+    if (novaSenha.length < 6) {
+      setSenhaMsg({ type: 'error', text: 'A nova senha deve ter pelo menos 6 caracteres.' });
+      return;
+    }
     setSavingSenha(true);
-    setTimeout(() => {
-      const result = changePassword(senhaAtual, novaSenha);
-      setSavingSenha(false);
+    try {
+      const result = await changePassword(senhaAtual, novaSenha);
       if (result.success) {
         setSenhaMsg({ type: 'success', text: 'Senha alterada com sucesso!' });
         setSenhaAtual('');
@@ -95,11 +101,15 @@ export default function UserProfile() {
       } else {
         setSenhaMsg({ type: 'error', text: result.error });
       }
-    }, 400);
+    } catch {
+      setSenhaMsg({ type: 'error', text: 'Erro ao alterar senha. Tente novamente.' });
+    } finally {
+      setSavingSenha(false);
+    }
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate('/login', { replace: true });
   };
 

@@ -136,7 +136,7 @@ export default function MyResumes() {
                     {downloadingId === resume.id ? '⏳ Gerando...' : '⬇️ Baixar PDF'}
                   </Button>
                 )}
-                <Button variant="danger" onClick={() => deleteResume(resume.id)} className="!py-1.5 !px-3 !text-xs shrink-0">
+                <Button variant="danger" onClick={async () => await deleteResume(resume.id)} className="!py-1.5 !px-3 !text-xs shrink-0">
                   🗑️ Excluir
                 </Button>
               </div>

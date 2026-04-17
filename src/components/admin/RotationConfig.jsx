@@ -55,7 +55,7 @@ export default function RotationConfig() {
             <p className="text-xs text-gray-500 mt-0.5">Encerra e gera novas vagas automaticamente</p>
           </div>
           <button
-            onClick={() => updateRotationConfig({ enabled: !rotationConfig.enabled })}
+            onClick={async () => await updateRotationConfig({ enabled: !rotationConfig.enabled })}
             className={`relative w-12 h-6 rounded-full transition-colors cursor-pointer ${
               rotationConfig.enabled ? 'bg-emerald-500' : 'bg-gray-300'
             }`}
@@ -76,7 +76,7 @@ export default function RotationConfig() {
             min={1}
             max={14}
             value={rotationConfig.intervalDays}
-            onChange={(e) => updateRotationConfig({ intervalDays: Number(e.target.value) })}
+            onChange={async (e) => await updateRotationConfig({ intervalDays: Number(e.target.value) })}
             className="w-full accent-indigo-600"
           />
           <div className="flex justify-between text-xs text-gray-400 mt-1">
@@ -97,7 +97,7 @@ export default function RotationConfig() {
             max={100}
             step={5}
             value={rotationConfig.rotateCount}
-            onChange={(e) => updateRotationConfig({ rotateCount: Number(e.target.value) })}
+            onChange={async (e) => await updateRotationConfig({ rotateCount: Number(e.target.value) })}
             className="w-full accent-indigo-600"
           />
           <div className="flex justify-between text-xs text-gray-400 mt-1">
@@ -114,9 +114,9 @@ export default function RotationConfig() {
 
         {/* Manual rotation */}
         <button
-          onClick={() => {
+          onClick={async () => {
             if (window.confirm(`Isso vai encerrar ${rotationConfig.rotateCount} vagas e gerar ${rotationConfig.rotateCount} novas. Continuar?`)) {
-              manualRotation();
+              await manualRotation();
             }
           }}
           className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-bold py-3 rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all cursor-pointer hover:shadow-lg"

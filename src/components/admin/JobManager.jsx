@@ -18,11 +18,11 @@ export default function JobManager() {
   const adminTotalPages = Math.ceil(jobs.length / ADMIN_PER_PAGE);
   const pagedJobs = jobs.slice((adminPage - 1) * ADMIN_PER_PAGE, adminPage * ADMIN_PER_PAGE);
 
-  const handleSave = (data) => {
+  const handleSave = async (data) => {
     if (editingJob) {
-      editJob(editingJob.id, data);
+      await editJob(editingJob.id, data);
     } else {
-      addJob(data);
+      await addJob(data);
     }
     setShowForm(false);
     setEditingJob(null);
@@ -38,9 +38,9 @@ export default function JobManager() {
     setEditingJob(null);
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (confirm('Tem certeza que deseja excluir esta vaga?')) {
-      deleteJob(id);
+      await deleteJob(id);
     }
   };
 
@@ -102,12 +102,12 @@ export default function JobManager() {
               </div>
               <div className="flex gap-2 shrink-0">
                 {job.status === 'encerrada' ? (
-                  <Button variant="secondary" onClick={() => reopenJob(job.id)} className="!py-1.5 !px-3 !text-xs">
+                  <Button variant="secondary" onClick={async () => await reopenJob(job.id)} className="!py-1.5 !px-3 !text-xs">
                     🔄 Reabrir
                   </Button>
                 ) : (
-                  <Button variant="secondary" onClick={() => {
-                    if (confirm('Encerrar esta vaga? Candidaturas vinculadas serão marcadas como encerradas.')) closeJob(job.id);
+                  <Button variant="secondary" onClick={async () => {
+                    if (confirm('Encerrar esta vaga? Candidaturas vinculadas serão marcadas como encerradas.')) await closeJob(job.id);
                   }} className="!py-1.5 !px-3 !text-xs !bg-red-50 !text-red-700 !border-red-200 hover:!bg-red-100">
                     ⛔ Encerrar
                   </Button>

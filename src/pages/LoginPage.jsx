@@ -9,6 +9,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
@@ -16,9 +17,10 @@ export default function LoginPage() {
 
   const from = location.state?.from?.pathname || '/usuario';
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccessMsg('');
 
     if (mode === 'register' && !nome.trim()) {
       setError('Preencha seu nome.');
@@ -28,18 +30,31 @@ export default function LoginPage() {
       setError('Preencha todos os campos.');
       return;
     }
+    if (mode === 'register' && senha.length < 6) {
+      setError('A senha deve ter pelo menos 6 caracteres.');
+      return;
+    }
 
     setLoading(true);
-    setTimeout(() => {
+    try {
       const result =
-        mode === 'login' ? login(email.trim(), senha) : register(nome.trim(), email.trim(), senha);
-      setLoading(false);
-      if (result.success) {
+        mode === 'login'
+          ? await login(email.trim(), senha)
+          : await register(nome.trim(), email.trim(), senha);
+      if (result.success && result.needsConfirmation) {
+        setError('');
+        setSuccessMsg('Conta criada! Verifique seu email para confirmar o cadastro antes de fazer login.');
+        setMode('login');
+      } else if (result.success) {
         navigate(from, { replace: true });
       } else {
         setError(result.error);
       }
-    }, 500);
+    } catch (err) {
+      setError('Erro de conexão. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const inputClass =
@@ -89,6 +104,12 @@ export default function LoginPage() {
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3 mb-4 flex items-center gap-2">
               <span>⚠️</span> {error}
+            </div>
+          )}
+
+          {successMsg && (
+            <div className="bg-green-50 border border-green-200 text-green-700 text-sm rounded-xl px-4 py-3 mb-4 flex items-center gap-2">
+              <span>✅</span> {successMsg}
             </div>
           )}
 

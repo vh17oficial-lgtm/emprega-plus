@@ -20,8 +20,8 @@ export default function UpsellTextsEditor() {
     setSaved(false);
   };
 
-  const handleSave = () => {
-    updateUpsellTexts(texts);
+  const handleSave = async () => {
+    await updateUpsellTexts(texts);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };

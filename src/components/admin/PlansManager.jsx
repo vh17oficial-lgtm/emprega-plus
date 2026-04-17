@@ -19,14 +19,14 @@ export default function PlansManager() {
     setSaved(false);
   };
 
-  const handleSave = () => {
-    updateSendPlans(plans);
+  const handleSave = async () => {
+    await updateSendPlans(plans);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
 
-  const updateUpsellPrice = (plan, field, value) => {
-    updateSiteConfig({ [plan]: { ...siteConfig[plan], [field]: value } });
+  const updateUpsellPrice = async (plan, field, value) => {
+    await updateSiteConfig({ [plan]: { ...siteConfig[plan], [field]: value } });
   };
 
   const inputClass = 'w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none';

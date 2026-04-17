@@ -37,13 +37,13 @@ export default function SiteConfigEditor() {
   const { siteConfig, updateSiteConfig } = useAppContext();
   const [saved, setSaved] = useState(false);
 
-  const update = (key, value) => {
-    updateSiteConfig({ [key]: value });
+  const update = async (key, value) => {
+    await updateSiteConfig({ [key]: value });
     flash();
   };
 
-  const updateNested = (parent, key, value) => {
-    updateSiteConfig({ [parent]: { ...siteConfig[parent], [key]: value } });
+  const updateNested = async (parent, key, value) => {
+    await updateSiteConfig({ [parent]: { ...siteConfig[parent], [key]: value } });
     flash();
   };
 

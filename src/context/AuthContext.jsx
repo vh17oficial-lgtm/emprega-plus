@@ -1,74 +1,188 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { supabase } from '../lib/supabase';
 import { FREE_SEND_CREDITS } from '../data/plansData';
 
 const AuthContext = createContext();
 
-function loadFromStorage(key, fallback) {
-  try {
-    const data = localStorage.getItem(key);
-    return data ? JSON.parse(data) : fallback;
-  } catch { return fallback; }
+// Map Supabase profile row → user object (same shape the app expects)
+function profileToUser(profile) {
+  if (!profile) return null;
+  return {
+    id: profile.id,
+    nome: profile.nome || '',
+    email: profile.email || '',
+    telefone: profile.telefone || '',
+    cidade: profile.cidade || '',
+    estado: profile.estado || '',
+    fotoPerfil: profile.foto_perfil_url || null,
+    role: profile.role || 'user',
+    sendCredits: profile.send_credits ?? FREE_SEND_CREDITS,
+    autoDispatchAccess: !!profile.auto_dispatch_access,
+    dailyDispatchLimit: profile.daily_dispatch_limit || 0,
+    dailyDispatchUsed: profile.daily_dispatch_used || 0,
+    dailyDispatchUnlimited: !!profile.daily_dispatch_unlimited,
+    lastDispatchDate: profile.last_dispatch_date || null,
+    isPriorityUser: !!profile.is_priority_user,
+    pdfDownloadAccess: !!profile.pdf_download_access,
+    purchaseHistory: profile.purchase_history || [],
+  };
+}
+
+// Map user updates → Supabase column names
+function updatesToColumns(updates) {
+  const map = {
+    nome: 'nome',
+    email: 'email',
+    telefone: 'telefone',
+    cidade: 'cidade',
+    estado: 'estado',
+    fotoPerfil: 'foto_perfil_url',
+    sendCredits: 'send_credits',
+    autoDispatchAccess: 'auto_dispatch_access',
+    dailyDispatchLimit: 'daily_dispatch_limit',
+    dailyDispatchUsed: 'daily_dispatch_used',
+    dailyDispatchUnlimited: 'daily_dispatch_unlimited',
+    lastDispatchDate: 'last_dispatch_date',
+    isPriorityUser: 'is_priority_user',
+    pdfDownloadAccess: 'pdf_download_access',
+    purchaseHistory: 'purchase_history',
+  };
+  const cols = {};
+  for (const [key, value] of Object.entries(updates)) {
+    if (map[key] !== undefined) cols[map[key]] = value;
+  }
+  return cols;
 }
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => loadFromStorage('emprega_user', null));
-  const [registeredUsers, setRegisteredUsers] = useState(() => loadFromStorage('emprega_users', []));
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const mountedRef = useRef(true);
 
-  useEffect(() => {
-    localStorage.setItem('emprega_users', JSON.stringify(registeredUsers));
-  }, [registeredUsers]);
+  // Fetch profile from Supabase
+  const fetchProfile = useCallback(async (userId) => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+    if (error) {
+      console.error('Erro ao carregar perfil:', error.message);
+      return null;
+    }
+    return profileToUser(data);
+  }, []);
 
+  // Initialize: check existing session + listen for auth changes
   useEffect(() => {
-    if (user) localStorage.setItem('emprega_user', JSON.stringify(user));
-    else localStorage.removeItem('emprega_user');
-  }, [user]);
+    mountedRef.current = true;
+
+    // Get initial session
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user && mountedRef.current) {
+        const profile = await fetchProfile(session.user.id);
+        if (mountedRef.current) setUser(profile);
+      }
+      if (mountedRef.current) setLoading(false);
+    });
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        const profile = await fetchProfile(session.user.id);
+        if (mountedRef.current) setUser(profile);
+      } else if (event === 'SIGNED_OUT') {
+        if (mountedRef.current) setUser(null);
+      }
+    });
+
+    return () => {
+      mountedRef.current = false;
+      subscription.unsubscribe();
+    };
+  }, [fetchProfile]);
 
   const isLoggedIn = !!user;
 
-  const register = (nome, email, senha) => {
-    const exists = registeredUsers.find((u) => u.email === email);
-    if (exists) return { success: false, error: 'Este email já está cadastrado.' };
-    const newUser = {
-      id: Date.now(),
-      nome,
-      email,
-      senha,
-      role: 'user',
-      sendCredits: FREE_SEND_CREDITS,
-      autoDispatchAccess: false,
-      dailyDispatchLimit: 0,
-      dailyDispatchUsed: 0,
-      dailyDispatchUnlimited: false,
-      lastDispatchDate: null,
-      purchaseHistory: [],
-    };
-    setRegisteredUsers((prev) => [...prev, newUser]);
-    setUser(newUser);
-    return { success: true };
-  };
-
-  const login = (email, senha) => {
-    const found = registeredUsers.find((u) => u.email === email && u.senha === senha);
-    if (!found) return { success: false, error: 'Email ou senha incorretos.' };
-    const today = new Date().toDateString();
-    const updated = { ...found };
-    if (updated.lastDispatchDate !== today) {
-      updated.dailyDispatchUsed = 0;
-      updated.lastDispatchDate = today;
+  // --- Persist updates to Supabase ---
+  const _updateUser = useCallback(async (updates) => {
+    if (!user) return;
+    // Optimistic local update
+    setUser((prev) => (prev ? { ...prev, ...updates } : prev));
+    // Persist to Supabase
+    const cols = updatesToColumns(updates);
+    if (Object.keys(cols).length > 0) {
+      const { error } = await supabase
+        .from('profiles')
+        .update(cols)
+        .eq('id', user.id);
+      if (error) console.error('Erro ao atualizar perfil:', error.message);
     }
-    setUser(updated);
+  }, [user]);
+
+  // --- Register ---
+  const register = async (nome, email, senha) => {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password: senha,
+      options: { data: { nome } },
+    });
+    if (error) {
+      if (error.message.includes('already registered') || error.message.includes('already been registered'))
+        return { success: false, error: 'Este email já está cadastrado.' };
+      return { success: false, error: error.message };
+    }
+    // Check if email confirmation is required
+    if (data.user && data.user.identities?.length === 0) {
+      return { success: false, error: 'Este email já está cadastrado.' };
+    }
+    if (data.user && !data.session) {
+      // Email confirmation is enabled — user created but not confirmed yet
+      return { success: true, needsConfirmation: true };
+    }
+    // Wait for profile to be created by trigger, then fetch
+    if (data.user) {
+      await new Promise((r) => setTimeout(r, 500));
+      const profile = await fetchProfile(data.user.id);
+      if (mountedRef.current) setUser(profile);
+    }
     return { success: true };
   };
 
-  const logout = () => setUser(null);
-
-  const _updateUser = (updates) => {
-    setUser((prev) => {
-      if (!prev) return prev;
-      const updated = { ...prev, ...updates };
-      setRegisteredUsers((ru) => ru.map((u) => (u.id === prev.id ? { ...u, ...updates } : u)));
-      return updated;
+  // --- Login ---
+  const login = async (email, senha) => {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password: senha,
     });
+    if (error) {
+      if (error.message.includes('Email not confirmed'))
+        return { success: false, error: 'Confirme seu email antes de fazer login. Verifique sua caixa de entrada.' };
+      return { success: false, error: 'Email ou senha incorretos.' };
+    }
+    if (data.user) {
+      const profile = await fetchProfile(data.user.id);
+      if (profile) {
+        // Reset daily dispatch if day changed
+        const today = new Date().toDateString();
+        if (profile.lastDispatchDate !== today) {
+          profile.dailyDispatchUsed = 0;
+          profile.lastDispatchDate = today;
+          await supabase.from('profiles').update({
+            daily_dispatch_used: 0,
+            last_dispatch_date: today,
+          }).eq('id', data.user.id);
+        }
+      }
+      if (mountedRef.current) setUser(profile);
+    }
+    return { success: true };
+  };
+
+  // --- Logout ---
+  const logout = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
   };
 
   // --- Send credits ---
@@ -126,7 +240,9 @@ export function AuthProvider({ children }) {
   };
 
   const upgradeDailyLimit = (amount, label, price) => {
-    const limitUpdates = amount === -1 ? { dailyDispatchUnlimited: true } : { dailyDispatchLimit: (user?.dailyDispatchLimit || 0) + amount };
+    const limitUpdates = amount === -1
+      ? { dailyDispatchUnlimited: true }
+      : { dailyDispatchLimit: (user?.dailyDispatchLimit || 0) + amount };
     _updateUser({
       ...limitUpdates,
       purchaseHistory: [
@@ -164,7 +280,7 @@ export function AuthProvider({ children }) {
   };
 
   // --- Profile ---
-  const updateProfile = (updates) => {
+  const updateProfile = async (updates) => {
     if (!user) return { success: false, error: 'Usuário não encontrado.' };
     const allowed = {};
     if (updates.nome !== undefined) allowed.nome = updates.nome;
@@ -172,32 +288,58 @@ export function AuthProvider({ children }) {
     if (updates.cidade !== undefined) allowed.cidade = updates.cidade;
     if (updates.estado !== undefined) allowed.estado = updates.estado;
     if (updates.fotoPerfil !== undefined) allowed.fotoPerfil = updates.fotoPerfil;
-    _updateUser(allowed);
+    await _updateUser(allowed);
     return { success: true };
   };
 
-  const changePassword = (senhaAtual, novaSenha) => {
+  const changePassword = async (senhaAtual, novaSenha) => {
     if (!user) return { success: false, error: 'Usuário não encontrado.' };
-    if (user.senha !== senhaAtual) return { success: false, error: 'Senha atual incorreta.' };
-    if (novaSenha.length < 4) return { success: false, error: 'A nova senha deve ter pelo menos 4 caracteres.' };
-    _updateUser({ senha: novaSenha });
+    if (novaSenha.length < 6) return { success: false, error: 'A nova senha deve ter pelo menos 6 caracteres.' };
+    // Verify current password by re-authenticating
+    const { error: verifyError } = await supabase.auth.signInWithPassword({
+      email: user.email,
+      password: senhaAtual,
+    });
+    if (verifyError) return { success: false, error: 'Senha atual incorreta.' };
+    // Update password
+    const { error } = await supabase.auth.updateUser({ password: novaSenha });
+    if (error) return { success: false, error: error.message };
     return { success: true };
   };
 
   // --- Admin ---
-  const getAllUsers = () => registeredUsers;
+  const getAllUsers = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) {
+      console.error('Erro ao buscar usuários:', error.message);
+      return [];
+    }
+    return data.map(profileToUser);
+  }, []);
 
-  const adminUpdateUser = (userId, updates) => {
-    setRegisteredUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, ...updates } : u)));
+  const adminUpdateUser = useCallback(async (userId, updates) => {
+    const cols = updatesToColumns(updates);
+    if (Object.keys(cols).length > 0) {
+      const { error } = await supabase
+        .from('profiles')
+        .update(cols)
+        .eq('id', userId);
+      if (error) console.error('Erro ao atualizar usuário:', error.message);
+    }
+    // If updating self, refresh local state
     if (user?.id === userId) {
       setUser((prev) => (prev ? { ...prev, ...updates } : prev));
     }
-  };
+  }, [user]);
 
   return (
     <AuthContext.Provider
       value={{
         user,
+        loading,
         isLoggedIn,
         register,
         login,

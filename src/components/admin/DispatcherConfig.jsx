@@ -17,8 +17,8 @@ export default function DispatcherConfig() {
     setSaved(false);
   };
 
-  const handleSave = () => {
-    updateAutoDispatchConfig(config);
+  const handleSave = async () => {
+    await updateAutoDispatchConfig(config);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };

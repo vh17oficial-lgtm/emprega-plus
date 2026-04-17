@@ -11,10 +11,10 @@ export default function LandingEditor() {
     setForm(landingTexts);
   }, [landingTexts]);
 
-  const handleChange = (e) => {
+  const handleChange = async (e) => {
     const updated = { ...form, [e.target.name]: e.target.value };
     setForm(updated);
-    updateLandingTexts(updated);
+    await updateLandingTexts(updated);
   };
 
   const handleSave = () => {

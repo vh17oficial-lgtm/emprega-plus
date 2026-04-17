@@ -26,10 +26,10 @@ export default function UploadResume() {
 
   const getExtension = () => file?.name.match(/\.[^.]+$/)?.[0] || '.pdf';
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!file) return;
     const displayName = (customName.trim() || file.name.replace(/\.[^.]+$/, '')) + getExtension();
-    saveResume({
+    await saveResume({
       type: 'upload',
       template: 'upload',
       fileName: displayName,

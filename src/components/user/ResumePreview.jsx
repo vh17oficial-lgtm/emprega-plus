@@ -26,8 +26,8 @@ export default function ResumePreview({ data, onBack }) {
 
   const Template = templates[currentTemplate] || ResumeTemplateClassic;
 
-  const handleSave = () => {
-    saveResume({ ...data, template: currentTemplate });
+  const handleSave = async () => {
+    await saveResume({ ...data, template: currentTemplate });
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
   };

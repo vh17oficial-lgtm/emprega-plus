@@ -17,8 +17,8 @@ export default function Header() {
 
   const isActive = (path) => location.pathname + location.search === path || location.pathname === path;
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate('/');
   };
 

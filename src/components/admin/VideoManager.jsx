@@ -38,7 +38,7 @@ export default function VideoManager() {
 
   const hasChanges = useMemo(() => JSON.stringify(draft) !== JSON.stringify(landingVideos), [draft, landingVideos]);
 
-  const handleSave = () => { updateLandingVideos(draft); setSaved(true); setTimeout(() => setSaved(false), 3000); };
+  const handleSave = async () => { await updateLandingVideos(draft); setSaved(true); setTimeout(() => setSaved(false), 3000); };
   const handleDiscard = () => { setDraft(structuredClone(landingVideos)); setSaved(false); };
   const nextId = () => Math.max(0, ...draft.map((v) => v.id)) + 1;
 

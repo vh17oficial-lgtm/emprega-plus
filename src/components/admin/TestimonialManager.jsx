@@ -25,7 +25,7 @@ export default function TestimonialManager() {
 
   const hasChanges = useMemo(() => JSON.stringify(draft) !== JSON.stringify(testimonials), [draft, testimonials]);
 
-  const handleSave = () => { updateTestimonials(draft); setSaved(true); setTimeout(() => setSaved(false), 3000); };
+  const handleSave = async () => { await updateTestimonials(draft); setSaved(true); setTimeout(() => setSaved(false), 3000); };
   const handleDiscard = () => { setDraft(structuredClone(testimonials)); setSaved(false); };
   const nextId = () => Math.max(0, ...draft.map((t) => t.id)) + 1;
 

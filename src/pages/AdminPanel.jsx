@@ -19,9 +19,7 @@ import RotationConfig from '../components/admin/RotationConfig';
 import ApplicationManager from '../components/admin/ApplicationManager';
 import UserManager from '../components/admin/UserManager';
 import TicketManager from '../components/admin/TicketManager';
-
-const ADMIN_EMAIL = 'admin@emprega.com';
-const ADMIN_PASSWORD = 'admin123';
+import { supabase } from '../lib/supabase';
 
 function AdminLogin({ onLogin }) {
   const [email, setEmail] = useState('');
@@ -29,7 +27,7 @@ function AdminLogin({ onLogin }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     if (!email.trim() || !senha.trim()) {
@@ -37,14 +35,34 @@ function AdminLogin({ onLogin }) {
       return;
     }
     setLoading(true);
-    setTimeout(() => {
-      if (email.trim().toLowerCase() === ADMIN_EMAIL && senha.trim() === ADMIN_PASSWORD) {
-        onLogin();
-      } else {
+    try {
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password: senha.trim(),
+      });
+      if (authError) {
         setError('Credenciais inválidas.');
+        setLoading(false);
+        return;
       }
+      // Check if user has admin role
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', data.user.id)
+        .single();
+      if (profileError || profile?.role !== 'admin') {
+        setError('Acesso negado. Você não é administrador.');
+        await supabase.auth.signOut();
+        setLoading(false);
+        return;
+      }
+      onLogin();
+    } catch {
+      setError('Erro de conexão. Tente novamente.');
+    } finally {
       setLoading(false);
-    }, 500);
+    }
   };
 
   const inputClass = 'w-full px-4 py-3 rounded-xl border border-gray-300 text-sm text-gray-900 bg-white outline-none transition-all focus:border-indigo-500 focus:shadow-[0_0_0_3px_rgba(99,102,241,0.15)]';
@@ -66,11 +84,6 @@ function AdminLogin({ onLogin }) {
           <p className="text-sm text-gray-500 mb-6">
             Acesso restrito. Insira as credenciais de administrador.
           </p>
-
-          <div className="bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 mb-4">
-            <p className="text-xs text-slate-500 font-medium mb-1">Credenciais de acesso:</p>
-            <p className="text-xs text-slate-700 font-mono">admin@emprega.com / admin123</p>
-          </div>
 
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3 mb-4 flex items-center gap-2">
@@ -121,6 +134,11 @@ export default function AdminPanel() {
   const [authenticated, setAuthenticated] = useState(false);
   const [activeSection, setActiveSection] = useState('vagas');
 
+  const handleAdminLogout = async () => {
+    await supabase.auth.signOut();
+    setAuthenticated(false);
+  };
+
   if (!authenticated) {
     return <AdminLogin onLogin={() => setAuthenticated(true)} />;
   }
@@ -135,7 +153,7 @@ export default function AdminPanel() {
             <p className="text-sm text-gray-500 mt-1">Gerencie vagas, planos, disparador e personalize a plataforma.</p>
           </div>
           <button
-            onClick={() => setAuthenticated(false)}
+            onClick={handleAdminLogout}
             className="text-sm text-gray-500 hover:text-red-600 hover:bg-red-50 px-4 py-2 rounded-lg transition-colors cursor-pointer self-start"
           >
             🔒 Sair do admin

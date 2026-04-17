@@ -79,8 +79,8 @@ export default function SocialProofManager() {
 
   const nextId = () => Math.max(0, ...messages.map((m) => m.id)) + 1;
 
-  const handleSave = () => {
-    updateSocialProofConfig(draft);
+  const handleSave = async () => {
+    await updateSocialProofConfig(draft);
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
   };

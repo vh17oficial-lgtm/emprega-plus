@@ -98,8 +98,8 @@ export default function JobList() {
     }
   };
 
-  const handleApplicationComplete = () => {
-    if (selectedJob) applyToJob(selectedJob.id, selectedResumeId);
+  const handleApplicationComplete = async () => {
+    if (selectedJob) await applyToJob(selectedJob.id, selectedResumeId);
   };
 
   const handleCloseAppModal = () => {

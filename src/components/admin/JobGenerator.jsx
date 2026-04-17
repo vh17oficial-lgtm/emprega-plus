@@ -27,15 +27,16 @@ export default function JobGenerator() {
     setStatus('confirming');
   };
 
-  const confirmGenerate = () => {
+  const confirmGenerate = async () => {
     setStatus('generating');
     setResult(null);
-    // Small delay so the UI shows loading state
-    setTimeout(() => {
-      const count = regenerateAllJobs(quantity);
+    try {
+      const count = await regenerateAllJobs(quantity);
       setResult(count);
       setStatus('done');
-    }, 800);
+    } catch {
+      setStatus(null);
+    }
   };
 
   const reset = () => {
