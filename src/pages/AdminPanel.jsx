@@ -20,6 +20,7 @@ import ApplicationManager from '../components/admin/ApplicationManager';
 import UserManager from '../components/admin/UserManager';
 import TicketManager from '../components/admin/TicketManager';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../context/AuthContext';
 
 function AdminLogin({ onLogin }) {
   const [email, setEmail] = useState('');
@@ -133,35 +134,19 @@ function AdminLogin({ onLogin }) {
 }
 
 export default function AdminPanel() {
-  const [authenticated, setAuthenticated] = useState(false);
-  const [checking, setChecking] = useState(true);
+  const { user, loading: authLoading, logout } = useAuth();
+  const [adminLoggedIn, setAdminLoggedIn] = useState(false);
   const [activeSection, setActiveSection] = useState('vagas');
 
-  // Check if current session is already an admin
-  useEffect(() => {
-    async function checkAdmin() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', session.user.id)
-          .single();
-        if (profile?.role === 'admin') {
-          setAuthenticated(true);
-        }
-      }
-      setChecking(false);
-    }
-    checkAdmin();
-  }, []);
+  // Auto-authenticate if current user is admin
+  const isAdmin = user?.role === 'admin';
 
   const handleAdminLogout = async () => {
-    await supabase.auth.signOut();
-    setAuthenticated(false);
+    await logout();
+    setAdminLoggedIn(false);
   };
 
-  if (checking) {
+  if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin h-8 w-8 border-4 border-indigo-600 border-t-transparent rounded-full" />
@@ -169,8 +154,8 @@ export default function AdminPanel() {
     );
   }
 
-  if (!authenticated) {
-    return <AdminLogin onLogin={() => setAuthenticated(true)} />;
+  if (!isAdmin && !adminLoggedIn) {
+    return <AdminLogin onLogin={() => setAdminLoggedIn(true)} />;
   }
 
   return (
