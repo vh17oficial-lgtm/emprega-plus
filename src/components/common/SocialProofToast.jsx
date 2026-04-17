@@ -29,10 +29,14 @@ const randTime = () => {
 
 function resolveTemplate(template) {
   return template
-    .replace(/\{name\}/g, pick(firstNames))
-    .replace(/\{initial\}/g, pick(firstNames).charAt(0))
-    .replace(/\{state\}/g, pick(states))
-    .replace(/\{job\}/g, pick(jobTitles));
+    .replace(/\{name\}/gi, pick(firstNames))
+    .replace(/\{nome\}/gi, pick(firstNames))
+    .replace(/\{initial\}/gi, pick(firstNames).charAt(0))
+    .replace(/\{inicial\}/gi, pick(firstNames).charAt(0))
+    .replace(/\{state\}/gi, pick(states))
+    .replace(/\{estado\}/gi, pick(states))
+    .replace(/\{job\}/gi, pick(jobTitles))
+    .replace(/\{vaga\}/gi, pick(jobTitles));
 }
 
 function getTimeText(format) {

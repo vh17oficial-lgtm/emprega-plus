@@ -290,14 +290,14 @@ export function AppProvider({ children }) {
 
   const regenerateAllJobs = async (count) => {
     const newJobs = generateJobs(count, 1);
-    // Delete all existing jobs
-    await supabase.from('jobs').delete().neq('id', 0);
-    // Insert new ones
+    const { error: delErr } = await supabase.from('jobs').delete().neq('id', 0);
+    if (delErr) { console.error('Erro ao deletar vagas:', delErr.message, delErr); alert('Erro ao deletar vagas: ' + delErr.message); return 0; }
     const rows = newJobs.map(j => ({
       ...jobToRow(j),
       created_at: new Date(Date.now() - Math.random() * 5 * 86400000).toISOString(),
     }));
-    const { data } = await supabase.from('jobs').insert(rows).select();
+    const { data, error: insErr } = await supabase.from('jobs').insert(rows).select();
+    if (insErr) { console.error('Erro ao inserir vagas:', insErr.message, insErr); alert('Erro ao inserir vagas: ' + insErr.message); return 0; }
     if (data) setJobs(data.map(jobFromRow));
     return data?.length || 0;
   };
@@ -441,41 +441,41 @@ export function AppProvider({ children }) {
   const updateSendPlans = async (plans) => {
     setSendPlans(plans);
     const { error: delErr } = await supabase.from('send_plans').delete().neq('id', '');
-    if (delErr) console.error('Erro ao deletar planos:', delErr.message);
+    if (delErr) { console.error('Erro ao deletar planos:', delErr.message, delErr); alert('Erro planos: ' + delErr.message); return; }
     const rows = plans.map((p, i) => ({
       id: p.id, name: p.name, credits: p.credits,
       price: p.price, active: p.active, popular: p.popular, sort_order: i,
     }));
     const { error: insErr } = await supabase.from('send_plans').insert(rows);
-    if (insErr) console.error('Erro ao inserir planos:', insErr.message);
+    if (insErr) { console.error('Erro ao inserir planos:', insErr.message, insErr); alert('Erro planos: ' + insErr.message); return; }
   };
 
   const updateAutoDispatchConfig = async (config) => {
     const merged = { ...autoDispatchConfig, ...config };
     setAutoDispatchConfig(merged);
     const { error } = await supabase.from('dispatch_config').upsert({ id: 1, config: merged, updated_at: new Date().toISOString() });
-    if (error) console.error('Erro ao salvar dispatch config:', error.message);
+    if (error) { console.error('Erro dispatch config:', error.message, error); alert('Erro dispatch: ' + error.message); }
   };
 
   const updateUpsellTexts = async (texts) => {
     const merged = { ...upsellTexts, ...texts };
     setUpsellTexts(merged);
     const { error } = await supabase.from('upsell_texts').upsert({ id: 1, config: merged, updated_at: new Date().toISOString() });
-    if (error) console.error('Erro ao salvar upsell texts:', error.message);
+    if (error) { console.error('Erro upsell texts:', error.message, error); alert('Erro upsell: ' + error.message); }
   };
 
   const updateSiteConfig = async (updates) => {
     const merged = { ...siteConfig, ...updates };
     setSiteConfig(merged);
     const { error } = await supabase.from('site_config').upsert({ id: 1, config: merged, updated_at: new Date().toISOString() });
-    if (error) console.error('Erro ao salvar site config:', error.message);
+    if (error) { console.error('Erro site config:', error.message, error); alert('Erro site config: ' + error.message); }
   };
 
   const updateRotationConfig = async (updates) => {
     const merged = { ...rotationConfig, ...updates };
     setRotationConfig(merged);
     const { error } = await supabase.from('rotation_config').upsert({ id: 1, config: merged, updated_at: new Date().toISOString() });
-    if (error) console.error('Erro ao salvar rotation config:', error.message);
+    if (error) { console.error('Erro rotation config:', error.message, error); alert('Erro rotação: ' + error.message); }
   };
 
   const updateSocialProofConfig = async (updates) => {
@@ -484,7 +484,7 @@ export function AppProvider({ children }) {
       : { ...socialProofConfig, ...updates };
     setSocialProofConfig(merged);
     const { error } = await supabase.from('social_proof_config').upsert({ id: 1, config: merged, updated_at: new Date().toISOString() });
-    if (error) console.error('Erro ao salvar social proof config:', error.message);
+    if (error) { console.error('Erro social proof:', error.message, error); alert('Erro social proof: ' + error.message); }
   };
 
   // ============================================
