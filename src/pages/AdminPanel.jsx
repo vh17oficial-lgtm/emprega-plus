@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Header from '../components/common/Header';
 import Footer from '../components/common/Footer';
@@ -36,6 +36,8 @@ function AdminLogin({ onLogin }) {
     }
     setLoading(true);
     try {
+      // Sign out current session first to avoid lock conflicts
+      await supabase.auth.signOut();
       const { data, error: authError } = await supabase.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
         password: senha.trim(),
@@ -132,12 +134,40 @@ function AdminLogin({ onLogin }) {
 
 export default function AdminPanel() {
   const [authenticated, setAuthenticated] = useState(false);
+  const [checking, setChecking] = useState(true);
   const [activeSection, setActiveSection] = useState('vagas');
+
+  // Check if current session is already an admin
+  useEffect(() => {
+    async function checkAdmin() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .single();
+        if (profile?.role === 'admin') {
+          setAuthenticated(true);
+        }
+      }
+      setChecking(false);
+    }
+    checkAdmin();
+  }, []);
 
   const handleAdminLogout = async () => {
     await supabase.auth.signOut();
     setAuthenticated(false);
   };
+
+  if (checking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin h-8 w-8 border-4 border-indigo-600 border-t-transparent rounded-full" />
+      </div>
+    );
+  }
 
   if (!authenticated) {
     return <AdminLogin onLogin={() => setAuthenticated(true)} />;
