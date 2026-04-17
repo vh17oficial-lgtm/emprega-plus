@@ -321,6 +321,7 @@ export function AppProvider({ children }) {
       file_size: resume.fileSize || '',
     };
     const { data, error } = await supabase.from('resumes').insert(row).select().single();
+    if (error) console.error('Erro ao salvar currículo:', error.message, error.details);
     if (data && !error) setSavedResumes(prev => [resumeFromRow(data), ...prev]);
   };
 

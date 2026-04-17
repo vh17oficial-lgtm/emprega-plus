@@ -89,18 +89,25 @@ export function AuthProvider({ children }) {
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
+        // Wait a bit for the trigger to create the profile
+        await new Promise((r) => setTimeout(r, 800));
         let profile = await fetchProfile(session.user.id);
-        // Google OAuth: profile may not exist yet (trigger uses raw_user_meta_data.nome)
-        if (!profile && session.user.app_metadata?.provider === 'google') {
-          const meta = session.user.user_metadata || {};
-          const { error: insertErr } = await supabase.from('profiles').upsert({
-            id: session.user.id,
-            nome: meta.full_name || meta.name || '',
-            email: session.user.email || '',
-            foto_perfil_url: meta.avatar_url || '',
-          });
-          if (!insertErr) {
-            profile = await fetchProfile(session.user.id);
+        // If profile still doesn't exist (e.g. Google OAuth where trigger might not set nome)
+        if (!profile) {
+          // Retry after a longer wait
+          await new Promise((r) => setTimeout(r, 1500));
+          profile = await fetchProfile(session.user.id);
+        }
+        // Update profile with Google metadata if nome is empty
+        if (profile && !profile.nome && session.user.user_metadata) {
+          const meta = session.user.user_metadata;
+          const googleName = meta.full_name || meta.name || '';
+          const googleAvatar = meta.avatar_url || meta.picture || '';
+          if (googleName) {
+            const updates = { nome: googleName };
+            if (googleAvatar) updates.foto_perfil_url = googleAvatar;
+            await supabase.from('profiles').update(updates).eq('id', session.user.id);
+            profile = { ...profile, nome: googleName, fotoPerfil: googleAvatar || profile.fotoPerfil };
           }
         }
         if (mountedRef.current) setUser(profile);

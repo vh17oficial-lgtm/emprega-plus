@@ -29,11 +29,17 @@ create table public.profiles (
 create or replace function public.handle_new_user()
 returns trigger as $$
 begin
-  insert into public.profiles (id, nome, email)
+  insert into public.profiles (id, nome, email, foto_perfil_url)
   values (
     new.id,
-    coalesce(new.raw_user_meta_data->>'nome', ''),
-    new.email
+    coalesce(
+      new.raw_user_meta_data->>'nome',
+      new.raw_user_meta_data->>'full_name',
+      new.raw_user_meta_data->>'name',
+      ''
+    ),
+    coalesce(new.email, ''),
+    coalesce(new.raw_user_meta_data->>'avatar_url', '')
   );
   return new;
 end;
