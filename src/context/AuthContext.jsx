@@ -88,8 +88,21 @@ export function AuthProvider({ children }) {
 
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
-        const profile = await fetchProfile(session.user.id);
+      if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
+        let profile = await fetchProfile(session.user.id);
+        // Google OAuth: profile may not exist yet (trigger uses raw_user_meta_data.nome)
+        if (!profile && session.user.app_metadata?.provider === 'google') {
+          const meta = session.user.user_metadata || {};
+          const { error: insertErr } = await supabase.from('profiles').upsert({
+            id: session.user.id,
+            nome: meta.full_name || meta.name || '',
+            email: session.user.email || '',
+            foto_perfil_url: meta.avatar_url || '',
+          });
+          if (!insertErr) {
+            profile = await fetchProfile(session.user.id);
+          }
+        }
         if (mountedRef.current) setUser(profile);
       } else if (event === 'SIGNED_OUT') {
         if (mountedRef.current) setUser(null);
@@ -176,6 +189,18 @@ export function AuthProvider({ children }) {
       }
       if (mountedRef.current) setUser(profile);
     }
+    return { success: true };
+  };
+
+  // --- Login com Google ---
+  const loginWithGoogle = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin + '/usuario',
+      },
+    });
+    if (error) return { success: false, error: error.message };
     return { success: true };
   };
 
@@ -343,6 +368,7 @@ export function AuthProvider({ children }) {
         isLoggedIn,
         register,
         login,
+        loginWithGoogle,
         logout,
         hasSendCredits,
         consumeSendCredit,
