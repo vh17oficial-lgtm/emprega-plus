@@ -77,6 +77,14 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     mountedRef.current = true;
 
+    // Safety timeout: never stay loading forever
+    const safetyTimer = setTimeout(() => {
+      if (mountedRef.current && loading) {
+        console.warn('Auth: safety timeout — finishing loading');
+        setLoading(false);
+      }
+    }, 5000);
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mountedRef.current) return;
 
@@ -117,6 +125,7 @@ export function AuthProvider({ children }) {
 
     return () => {
       mountedRef.current = false;
+      clearTimeout(safetyTimer);
       subscription.unsubscribe();
     };
   }, [fetchProfile]);
