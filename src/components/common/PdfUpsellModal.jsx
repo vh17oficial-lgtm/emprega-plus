@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react';
 import Portal from './Portal';
 import PaymentModal from './PaymentModal';
 import { useAppContext } from '../../context/AppContext';
+import { useAuth } from '../../context/AuthContext';
 
 export default function PdfUpsellModal({ isOpen, onClose, onUnlocked }) {
   const { siteConfig } = useAppContext();
+  const { refreshProfile } = useAuth();
   const [showPayment, setShowPayment] = useState(false);
 
   const plan = {
@@ -31,7 +33,10 @@ export default function PdfUpsellModal({ isOpen, onClose, onUnlocked }) {
         isOpen={true}
         onClose={() => setShowPayment(false)}
         plan={plan}
+        productType="pdf_unlock"
+        productId="pdf-download"
         onComplete={() => {
+          refreshProfile();
           setShowPayment(false);
           onUnlocked(plan.price);
         }}

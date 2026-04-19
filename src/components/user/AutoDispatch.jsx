@@ -21,8 +21,7 @@ export default function AutoDispatch() {
     hasAutoDispatchAccess,
     getDailyDispatchRemaining,
     consumeDailyDispatch,
-    purchaseAutoDispatch,
-    upgradeDailyLimit,
+    refreshProfile,
     user,
   } = useAuth();
 
@@ -133,12 +132,8 @@ export default function AutoDispatch() {
     setPurchaseType(showPurchaseUpsell ? 'base' : 'upgrade');
   };
 
-  const handlePaymentComplete = (plan) => {
-    if (purchaseType === 'base') {
-      purchaseAutoDispatch(autoDispatchConfig.initialDailyLimit, plan.price);
-    } else {
-      upgradeDailyLimit(plan._amount ?? plan.amount, plan._label ?? plan.name, plan.price);
-    }
+  const handlePaymentComplete = () => {
+    refreshProfile();
     setSelectedPlan(null);
     setPurchaseType(null);
   };
@@ -428,6 +423,8 @@ export default function AutoDispatch() {
         isOpen={!!selectedPlan}
         onClose={() => { setSelectedPlan(null); setPurchaseType(null); }}
         plan={selectedPlan}
+        productType={purchaseType === 'base' ? 'auto_dispatch' : 'daily_limit_upgrade'}
+        productId={selectedPlan?.id || 'dispatch-base'}
         onComplete={handlePaymentComplete}
       />
     </div>

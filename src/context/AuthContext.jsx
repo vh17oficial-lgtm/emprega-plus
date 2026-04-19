@@ -401,6 +401,7 @@ export function AuthProvider({ children }) {
         hasPdfAccess,
         purchasePdfAccess,
         updateProfile,
+        refreshProfile: _refreshProfile,
         changePassword,
         getAllUsers,
         adminUpdateUser,

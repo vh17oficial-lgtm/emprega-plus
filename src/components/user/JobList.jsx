@@ -13,7 +13,7 @@ const emptyFilters = { search: '', category: '', workType: '', level: '', locati
 
 export default function JobList() {
   const { jobs, applyToJob, isJobApplied, savedResumes, sendPlans, upsellTexts, getNewJobsToday, getActivityCount, getActiveJobs, getJobViews, getJobApplications } = useAppContext();
-  const { hasSendCredits, consumeSendCredit, addSendCredits } = useAuth();
+  const { hasSendCredits, consumeSendCredit, refreshProfile } = useAuth();
   const [appModalOpen, setAppModalOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState(null);
   const [noResumeWarning, setNoResumeWarning] = useState(false);
@@ -113,8 +113,8 @@ export default function JobList() {
     setShowUpsell(false);
   };
 
-  const handlePaymentComplete = (plan) => {
-    addSendCredits(plan.credits, plan.name, plan.price);
+  const handlePaymentComplete = () => {
+    refreshProfile();
     setSelectedPlan(null);
     if (pendingJob) {
       setTimeout(() => {
@@ -294,6 +294,8 @@ export default function JobList() {
         isOpen={!!selectedPlan}
         onClose={() => { setSelectedPlan(null); setPendingJob(null); }}
         plan={selectedPlan}
+        productType="send_credits"
+        productId={selectedPlan?.id}
         onComplete={handlePaymentComplete}
       />
     </div>

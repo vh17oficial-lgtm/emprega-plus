@@ -5,7 +5,7 @@ import UpsellModal from '../common/UpsellModal';
 import PaymentModal from '../common/PaymentModal';
 
 export default function CreditsBar() {
-  const { user, addSendCredits, hasAutoDispatchAccess, getDailyDispatchRemaining } = useAuth();
+  const { user, refreshProfile, hasAutoDispatchAccess, getDailyDispatchRemaining } = useAuth();
   const { sendPlans, upsellTexts, getAppliedCount } = useAppContext();
   const [showUpsell, setShowUpsell] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState(null);
@@ -23,8 +23,8 @@ export default function CreditsBar() {
     setShowUpsell(false);
   };
 
-  const handlePaymentComplete = (plan) => {
-    addSendCredits(plan.credits, plan.name, plan.price);
+  const handlePaymentComplete = () => {
+    refreshProfile();
     setSelectedPlan(null);
   };
 
@@ -142,6 +142,8 @@ export default function CreditsBar() {
         isOpen={!!selectedPlan}
         onClose={() => setSelectedPlan(null)}
         plan={selectedPlan}
+        productType="send_credits"
+        productId={selectedPlan?.id}
         onComplete={handlePaymentComplete}
       />
     </>

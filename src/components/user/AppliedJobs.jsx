@@ -6,7 +6,7 @@ import PaymentModal from '../common/PaymentModal';
 
 export default function AppliedJobs() {
   const { jobs, appliedJobs, savedResumes, getAppliedJobIds, getApplicationStatus, getClosedMessage, getStatusMessage } = useAppContext();
-  const { hasPurchased, isPriorityUser, purchasePriority } = useAuth();
+  const { hasPurchased, isPriorityUser, refreshProfile } = useAuth();
   const appliedIds = getAppliedJobIds();
   const applied = jobs.filter((j) => appliedIds.includes(j.id));
   const [detailJob, setDetailJob] = useState(null);
@@ -180,8 +180,10 @@ export default function AppliedJobs() {
         isOpen={showPriorityPayment}
         onClose={() => setShowPriorityPayment(false)}
         plan={priorityPlan}
+        productType="priority"
+        productId="priority-resume"
         onComplete={() => {
-          purchasePriority();
+          refreshProfile();
           setShowPriorityPayment(false);
         }}
       />
