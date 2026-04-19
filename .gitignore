@@ -29,9 +29,9 @@ home-prime-design-main/
 # Copilot session files
 .copilot/
 
-# Misc images at root
-ChatGPT*.png
-logo*.png
+# Misc images at root (not in public/)
+/ChatGPT*.png
+/logo*.png
 
 # Environment
 .env
