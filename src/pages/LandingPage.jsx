@@ -10,6 +10,7 @@ import TestimonialsSection from '../components/landing/TestimonialsSection';
 import MediaShowcase from '../components/landing/MediaShowcase';
 import FeaturedJobs from '../components/landing/FeaturedJobs';
 import CTASection from '../components/landing/CTASection';
+import UserReviews from '../components/landing/UserReviews';
 
 export default function LandingPage() {
   return (
@@ -24,6 +25,7 @@ export default function LandingPage() {
         <MediaShowcase />
         <FeaturedJobs />
         <CTASection />
+        <UserReviews />
       </main>
       <div className="hidden lg:block">
         <Footer />

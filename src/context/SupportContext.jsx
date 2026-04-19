@@ -10,6 +10,9 @@ export function SupportProvider({ children }) {
   const [messages, setMessages] = useState([]);
   const [adminOnline, setAdminOnline] = useState(false);
   const mountedRef = useRef(true);
+  const presenceChannelRef = useRef(null);
+  const userRef = useRef(user);
+  useEffect(() => { userRef.current = user; }, [user]);
 
   // Load all conversations and messages from Supabase
   useEffect(() => {
@@ -59,8 +62,32 @@ export function SupportProvider({ children }) {
     };
   }, []);
 
-  const setAdminPresence = useCallback((online) => {
-    setAdminOnline(online);
+  // Admin presence via Supabase Realtime
+  useEffect(() => {
+    const channel = supabase.channel('support-presence');
+    channel
+      .on('presence', { event: 'sync' }, () => {
+        const state = channel.presenceState();
+        const hasAdmin = Object.values(state).flat().some(p => p.role === 'admin');
+        if (mountedRef.current) setAdminOnline(hasAdmin);
+      })
+      .subscribe();
+    presenceChannelRef.current = channel;
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
+  const setAdminPresence = useCallback(async (online) => {
+    const channel = presenceChannelRef.current;
+    if (!channel) return;
+    try {
+      if (online) {
+        await channel.track({ role: 'admin', user_id: userRef.current?.id });
+      } else {
+        await channel.untrack();
+      }
+    } catch (err) {
+      console.error('Erro na presença admin:', err);
+    }
   }, []);
 
   const getOrCreateConversation = useCallback(async () => {

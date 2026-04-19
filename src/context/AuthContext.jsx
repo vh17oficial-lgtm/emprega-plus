@@ -217,8 +217,13 @@ export function AuthProvider({ children }) {
 
   // --- Logout ---
   const logout = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error('Erro no signOut:', err);
+    } finally {
+      setUser(null);
+    }
   };
 
   // --- Send credits (via secure RPC) ---

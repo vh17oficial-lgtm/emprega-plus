@@ -7,6 +7,71 @@ const stats = [
   { value: '2.800+', label: 'Candidaturas enviadas' },
 ];
 
+function ResumePreviewCard({ className = '' }) {
+  return (
+    <div className={className}>
+      <div className="relative">
+        <div className="absolute -inset-4 rounded-3xl blur-2xl" style={{ background: 'hsl(215, 80%, 48%, 0.1)' }} />
+        <div className="relative rounded-2xl bg-white shadow-xl overflow-hidden border border-slate-200/40">
+          <div className="flex items-center gap-2 px-4 py-3 bg-slate-50 border-b border-slate-200">
+            <div className="flex gap-1.5">
+              <div className="w-3 h-3 rounded-full bg-red-400/50" />
+              <div className="w-3 h-3 rounded-full bg-amber-400/50" />
+              <div className="w-3 h-3 rounded-full bg-emerald-400/50" />
+            </div>
+            <span className="text-xs text-slate-500 ml-2">currículo_profissional.pdf</span>
+            <span className="ml-auto text-xs text-slate-500">PDF ↓</span>
+          </div>
+          <div className="p-5 sm:p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full lp-gradient-primary flex items-center justify-center text-white font-bold text-sm">MS</div>
+              <div>
+                <p className="font-semibold text-slate-900 text-sm">Maria Silva</p>
+                <p className="text-xs text-slate-500">Analista Administrativa</p>
+              </div>
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: 'var(--lp-primary)' }}>Objetivo Profissional</p>
+              <div className="space-y-1">
+                <div className="h-2 bg-slate-100 rounded-full w-full" />
+                <div className="h-2 bg-slate-100 rounded-full w-4/5" />
+              </div>
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: 'var(--lp-primary)' }}>Experiência</p>
+              <div className="space-y-1">
+                <div className="h-2 bg-slate-100 rounded-full w-full" />
+                <div className="h-2 bg-slate-100 rounded-full w-3/4" />
+                <div className="h-2 bg-slate-100 rounded-full w-5/6" />
+              </div>
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: 'var(--lp-primary)' }}>Habilidades</p>
+              <div className="flex gap-1.5 flex-wrap">
+                {['Organização', 'Excel', 'Comunicação'].map((s) => (
+                  <span key={s} className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[10px] font-medium">{s}</span>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="absolute -top-3 -right-3 flex items-center gap-1.5 rounded-full lp-gradient-primary px-3 py-1.5 text-white text-xs font-semibold shadow-md">
+          <Sparkles className="h-3.5 w-3.5" />
+          Currículo pronto!
+        </div>
+        <div className="absolute -bottom-4 -left-2 sm:-left-4 flex items-center gap-2 rounded-xl bg-white px-3 sm:px-4 py-2 sm:py-2.5 shadow-md border border-slate-200">
+          <FileText className="h-4 w-4 shrink-0" style={{ color: 'var(--lp-primary)' }} />
+          <div className="min-w-0">
+            <p className="text-[11px] sm:text-xs font-semibold text-slate-900">Candidatura enviada!</p>
+            <p className="text-[10px] text-slate-500">há 2 min • Amazon Brasil</p>
+          </div>
+          <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function HeroSection() {
   return (
     <section className="relative overflow-hidden" style={{ background: 'linear-gradient(180deg, rgba(12, 17, 34, 0.85) 0%, rgba(14, 20, 40, 0.9) 100%)' }}>
@@ -27,6 +92,11 @@ export default function HeroSection() {
               <span className="lp-text-gradient">2 minutos</span> e se candidate a vagas{' '}
               <span className="lp-text-gradient">com 1 clique</span>
             </h1>
+
+            {/* Mobile: resume card between title and subtitle */}
+            <div className="lp-fade-up-2 lg:hidden w-full max-w-[280px] sm:max-w-[320px] mx-auto my-8">
+              <ResumePreviewCard />
+            </div>
 
             <p className="lp-fade-up-2 text-base sm:text-lg text-white/60 max-w-lg mx-auto lg:mx-0 mb-10">
               Mesmo sem experiência, você pode criar um currículo profissional e enviar para empresas de forma simples e rápida.
@@ -62,76 +132,9 @@ export default function HeroSection() {
             </div>
           </div>
 
-          {/* Resume card — below text on mobile, right side on desktop */}
-          <div className="lp-fade-up-2 flex-shrink-0 w-full max-w-[280px] sm:max-w-[320px] lg:max-w-none lg:w-80 mx-auto lg:mx-0">
-            <div className="relative">
-              <div className="absolute -inset-4 rounded-3xl blur-2xl" style={{ background: 'hsl(215, 80%, 48%, 0.1)' }} />
-
-              <div className="relative rounded-2xl bg-white shadow-xl overflow-hidden border border-slate-200/40">
-                {/* Browser chrome */}
-                <div className="flex items-center gap-2 px-4 py-3 bg-slate-50 border-b border-slate-200">
-                  <div className="flex gap-1.5">
-                    <div className="w-3 h-3 rounded-full bg-red-400/50" />
-                    <div className="w-3 h-3 rounded-full bg-amber-400/50" />
-                    <div className="w-3 h-3 rounded-full bg-emerald-400/50" />
-                  </div>
-                  <span className="text-xs text-slate-500 ml-2">currículo_profissional.pdf</span>
-                  <span className="ml-auto text-xs text-slate-500">PDF ↓</span>
-                </div>
-
-                <div className="p-5 sm:p-6 space-y-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full lp-gradient-primary flex items-center justify-center text-white font-bold text-sm">MS</div>
-                    <div>
-                      <p className="font-semibold text-slate-900 text-sm">Maria Silva</p>
-                      <p className="text-xs text-slate-500">Analista Administrativa</p>
-                    </div>
-                  </div>
-
-                  <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: 'var(--lp-primary)' }}>Objetivo Profissional</p>
-                    <div className="space-y-1">
-                      <div className="h-2 bg-slate-100 rounded-full w-full" />
-                      <div className="h-2 bg-slate-100 rounded-full w-4/5" />
-                    </div>
-                  </div>
-
-                  <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: 'var(--lp-primary)' }}>Experiência</p>
-                    <div className="space-y-1">
-                      <div className="h-2 bg-slate-100 rounded-full w-full" />
-                      <div className="h-2 bg-slate-100 rounded-full w-3/4" />
-                      <div className="h-2 bg-slate-100 rounded-full w-5/6" />
-                    </div>
-                  </div>
-
-                  <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: 'var(--lp-primary)' }}>Habilidades</p>
-                    <div className="flex gap-1.5 flex-wrap">
-                      {['Organização', 'Excel', 'Comunicação'].map((s) => (
-                        <span key={s} className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[10px] font-medium">{s}</span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Floating badge */}
-              <div className="absolute -top-3 -right-3 flex items-center gap-1.5 rounded-full lp-gradient-primary px-3 py-1.5 text-white text-xs font-semibold shadow-md">
-                <Sparkles className="h-3.5 w-3.5" />
-                Currículo pronto!
-              </div>
-
-              {/* Floating notification */}
-              <div className="absolute -bottom-4 -left-2 sm:-left-4 flex items-center gap-2 rounded-xl bg-white px-3 sm:px-4 py-2 sm:py-2.5 shadow-md border border-slate-200">
-                <FileText className="h-4 w-4 shrink-0" style={{ color: 'var(--lp-primary)' }} />
-                <div className="min-w-0">
-                  <p className="text-[11px] sm:text-xs font-semibold text-slate-900">Candidatura enviada!</p>
-                  <p className="text-[10px] text-slate-500">há 2 min • Amazon Brasil</p>
-                </div>
-                <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
-              </div>
-            </div>
+          {/* Resume card — desktop only */}
+          <div className="lp-fade-up-2 hidden lg:block flex-shrink-0 lg:w-80">
+            <ResumePreviewCard />
           </div>
         </div>
       </div>
