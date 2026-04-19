@@ -56,7 +56,7 @@ export default function ResumeTemplateClassic({ data }) {
   const courseBlocks = parseBlocks(cursos);
 
   return (
-    <div className="px-10 py-8" style={{ fontFamily: "'Inter', sans-serif" }}>
+    <div className="px-10 py-8" style={{ minHeight: '297mm', fontFamily: "'Inter', sans-serif" }}>
       {/* Header centrado */}
       <div className="text-center pb-3">
         {photo && (

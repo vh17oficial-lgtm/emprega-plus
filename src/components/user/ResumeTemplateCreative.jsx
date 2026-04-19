@@ -3,7 +3,7 @@ export default function ResumeTemplateCreative({ data }) {
   const { nome, cargo, resumo, email, telefone, endereco, linkedin, experiencia, formacao, habilidades, cursos, idiomas, photo } = data;
 
   return (
-    <div style={{ fontFamily: "'Inter', sans-serif" }}>
+    <div className="flex flex-col" style={{ minHeight: '297mm', fontFamily: "'Inter', sans-serif" }}>
       {/* Hero Header */}
       <div className="bg-gradient-to-br from-violet-700 via-indigo-700 to-slate-800 text-white px-7 py-6 relative overflow-hidden">
         <div className="absolute inset-0 opacity-10">
@@ -28,7 +28,7 @@ export default function ResumeTemplateCreative({ data }) {
       </div>
 
       {/* Body */}
-      <div className="p-7 space-y-4">
+      <div className="flex-1 p-7 space-y-4">
         {/* Summary */}
         {resumo && (
           <div className="bg-violet-50 rounded-lg p-3 border-l-3 border-violet-500">

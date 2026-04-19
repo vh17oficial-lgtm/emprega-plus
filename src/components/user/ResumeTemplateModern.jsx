@@ -54,7 +54,7 @@ export default function ResumeTemplateModern({ data }) {
   const courseBlocks = parseBlocks(cursos);
 
   return (
-    <div style={{ fontFamily: "'Inter', sans-serif" }}>
+    <div className="flex flex-col" style={{ minHeight: '297mm', fontFamily: "'Inter', sans-serif" }}>
       {/* Dark Header */}
       <div className="bg-slate-800 text-white px-10 py-7">
         <div className="flex items-center gap-5">
@@ -79,7 +79,7 @@ export default function ResumeTemplateModern({ data }) {
       </div>
 
       {/* Body */}
-      <div className="px-10 py-7 space-y-4">
+      <div className="flex-1 px-10 py-7 space-y-4">
         {resumo && (
           <section>
             <SectionTitle>OBJETIVO PROFISSIONAL</SectionTitle>

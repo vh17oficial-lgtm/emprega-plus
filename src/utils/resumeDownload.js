@@ -25,8 +25,9 @@ export async function downloadResumePDF(element, fileName = 'Curriculo') {
   const ratio = pdfW / imgW;
   const scaledH = imgH * ratio;
 
-  if (scaledH <= pdfH) {
-    pdf.addImage(imgData, 'PNG', 0, 0, pdfW, scaledH);
+  if (scaledH <= pdfH + 1) {
+    // Snap to full A4 page height to avoid rounding gaps
+    pdf.addImage(imgData, 'PNG', 0, 0, pdfW, pdfH);
   } else {
     // Multi-page: slice the canvas
     let yOffset = 0;

@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Home, Search, Send, Zap, MoreHorizontal, FileText, Upload, FolderOpen, User, X } from 'lucide-react';
+import { Home, Search, Send, Zap, MoreHorizontal, FileText, Upload, FolderOpen, User, Settings, X } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 
 const mainItems = [
   { id: 'home', icon: Home, label: 'Início', route: '/' },
@@ -20,14 +21,20 @@ export default function MobileBottomNav({ activeTab, onTabChange }) {
   const [moreOpen, setMoreOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
   const isOnDashboard = location.pathname === '/usuario';
+  const isAdmin = user?.role === 'admin';
 
-  const isMoreActive = moreItems.some((item) =>
+  const adminItem = { id: 'admin', icon: Settings, label: 'Painel Admin', route: '/admin' };
+  const allMoreItems = isAdmin ? [...moreItems, adminItem] : moreItems;
+
+  const isMoreActive = allMoreItems.some((item) =>
     isOnDashboard && activeTab ? activeTab === item.tab : false
-  );
+  ) || (isAdmin && location.pathname === '/admin');
 
   const getIsActive = (item) => {
     if (item.id === 'home') return location.pathname === '/';
+    if (item.id === 'admin') return location.pathname === '/admin';
     if (isOnDashboard && activeTab) return activeTab === item.tab;
     return location.pathname + location.search === item.route;
   };
@@ -36,6 +43,10 @@ export default function MobileBottomNav({ activeTab, onTabChange }) {
     setMoreOpen(false);
     if (item.id === 'home') {
       navigate('/');
+      return;
+    }
+    if (item.id === 'admin') {
+      navigate('/admin');
       return;
     }
     if (isOnDashboard && onTabChange) {
@@ -63,7 +74,7 @@ export default function MobileBottomNav({ activeTab, onTabChange }) {
               </button>
             </div>
             <div className="grid grid-cols-3 gap-2">
-              {moreItems.map((item) => {
+              {allMoreItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = getIsActive(item);
                 return (

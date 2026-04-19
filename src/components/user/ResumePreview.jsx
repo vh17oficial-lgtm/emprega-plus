@@ -37,7 +37,7 @@ export default function ResumePreview({ data, onBack }) {
     setDownloading(true);
     try {
       const container = document.createElement('div');
-      container.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;z-index:-1;background:#fff;';
+      container.style.cssText = 'position:fixed;left:-9999px;top:0;width:210mm;height:297mm;z-index:-1;background:#fff;overflow:hidden;';
       document.body.appendChild(container);
 
       const root = createRoot(container);
@@ -94,7 +94,7 @@ export default function ResumePreview({ data, onBack }) {
           className="bg-white shadow-[0_4px_40px_rgba(0,0,0,0.12)] overflow-hidden origin-top"
           style={{
             width: '210mm',
-            minHeight: '297mm',
+            height: '297mm',
             maxWidth: '100%',
           }}
         >

@@ -9,6 +9,8 @@ export default function Header() {
   const { user, isLoggedIn, logout } = useAuth();
   const { siteConfig } = useAppContext();
 
+  const isAdmin = user?.role === 'admin';
+
   const links = [
     { to: '/', label: 'Início' },
     { to: '/usuario?tab=vagas', label: 'Vagas' },
@@ -56,6 +58,18 @@ export default function Header() {
 
               {isLoggedIn ? (
                 <div className="ml-3 flex items-center gap-2">
+                  {isAdmin && (
+                    <Link
+                      to="/admin"
+                      className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${
+                        location.pathname === '/admin'
+                          ? 'bg-indigo-100 text-indigo-700'
+                          : 'text-indigo-600 hover:bg-indigo-50'
+                      }`}
+                    >
+                      ⚙️ Admin
+                    </Link>
+                  )}
                   <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-100">
                     <div className="w-6 h-6 bg-indigo-600 rounded-full flex items-center justify-center">
                       <span className="text-white text-[10px] font-bold">{user.nome?.charAt(0)?.toUpperCase()}</span>

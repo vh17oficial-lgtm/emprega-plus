@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import Header from '../components/common/Header';
 import Footer from '../components/common/Footer';
 import AdminSidebar from '../components/admin/AdminSidebar';
-import { cacheBust } from '../utils/cacheBust';
 import JobManager from '../components/admin/JobManager';
 import JobGenerator from '../components/admin/JobGenerator';
 import LandingEditor from '../components/admin/LandingEditor';
@@ -19,144 +18,10 @@ import RotationConfig from '../components/admin/RotationConfig';
 import ApplicationManager from '../components/admin/ApplicationManager';
 import UserManager from '../components/admin/UserManager';
 import TicketManager from '../components/admin/TicketManager';
-import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 
-function AdminLogin({ onLogin }) {
-  const [email, setEmail] = useState('');
-  const [senha, setSenha] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    if (!email.trim() || !senha.trim()) {
-      setError('Preencha todos os campos.');
-      return;
-    }
-    setLoading(true);
-    try {
-      // Sign out current session first to avoid lock conflicts
-      await supabase.auth.signOut();
-      const { data, error: authError } = await supabase.auth.signInWithPassword({
-        email: email.trim().toLowerCase(),
-        password: senha.trim(),
-      });
-      if (authError) {
-        setError('Credenciais inválidas.');
-        setLoading(false);
-        return;
-      }
-      // Check if user has admin role
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', data.user.id)
-        .single();
-      if (profileError || profile?.role !== 'admin') {
-        setError('Acesso negado. Você não é administrador.');
-        await supabase.auth.signOut();
-        setLoading(false);
-        return;
-      }
-      onLogin();
-    } catch {
-      setError('Erro de conexão. Tente novamente.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const inputClass = 'w-full px-4 py-3 rounded-xl border border-gray-300 text-sm text-gray-900 bg-white outline-none transition-all focus:border-indigo-500 focus:shadow-[0_0_0_3px_rgba(99,102,241,0.15)]';
-
-  return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2">
-            <img src={cacheBust("/logo-certa.png")} alt="Emprega+" className="logo-crisp h-16 w-auto object-contain" />
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl shadow-2xl p-8">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-2xl">🔒</span>
-            <h2 className="text-xl font-bold text-gray-900">Área Administrativa</h2>
-          </div>
-          <p className="text-sm text-gray-500 mb-6">
-            Acesso restrito. Insira as credenciais de administrador.
-          </p>
-
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3 mb-4 flex items-center gap-2">
-              <span>⚠️</span> {error}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Email do admin</label>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="admin@emprega.com" className={inputClass} autoComplete="username" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Senha</label>
-              <input type="password" value={senha} onChange={(e) => setSenha(e.target.value)} placeholder="••••••••" className={inputClass} autoComplete="current-password" />
-            </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-indigo-600 text-white py-3 rounded-xl text-sm font-bold hover:bg-indigo-700 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                  Verificando...
-                </span>
-              ) : (
-                'Entrar no painel'
-              )}
-            </button>
-          </form>
-        </div>
-
-        <p className="text-center mt-6">
-          <Link to="/" className="text-sm text-slate-400 hover:text-white transition-colors">
-            ← Voltar para a página inicial
-          </Link>
-        </p>
-      </div>
-    </div>
-  );
-}
-
 export default function AdminPanel() {
-  const { user, loading: authLoading, logout } = useAuth();
-  const [adminLoggedIn, setAdminLoggedIn] = useState(false);
   const [activeSection, setActiveSection] = useState('vagas');
-
-  // Auto-authenticate if current user is admin
-  const isAdmin = user?.role === 'admin';
-
-  const handleAdminLogout = async () => {
-    await logout();
-    setAdminLoggedIn(false);
-  };
-
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin h-8 w-8 border-4 border-indigo-600 border-t-transparent rounded-full" />
-      </div>
-    );
-  }
-
-  if (!isAdmin && !adminLoggedIn) {
-    return <AdminLogin onLogin={() => setAdminLoggedIn(true)} />;
-  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -167,12 +32,12 @@ export default function AdminPanel() {
             <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Painel Administrativo</h1>
             <p className="text-sm text-gray-500 mt-1">Gerencie vagas, planos, disparador e personalize a plataforma.</p>
           </div>
-          <button
-            onClick={handleAdminLogout}
-            className="text-sm text-gray-500 hover:text-red-600 hover:bg-red-50 px-4 py-2 rounded-lg transition-colors cursor-pointer self-start"
+          <Link
+            to="/usuario"
+            className="text-sm text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 px-4 py-2 rounded-lg transition-colors self-start"
           >
-            🔒 Sair do admin
-          </button>
+            ← Voltar ao painel
+          </Link>
         </div>
 
         <div className="flex flex-col lg:flex-row gap-4 sm:gap-8">

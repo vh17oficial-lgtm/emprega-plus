@@ -63,7 +63,7 @@ export default function ResumeTemplateMinimal({ data }) {
   const courseBlocks = parseBlocks(cursos);
 
   return (
-    <div className="flex min-h-full" style={{ fontFamily: "'Inter', sans-serif" }}>
+    <div className="flex" style={{ minHeight: '297mm', fontFamily: "'Inter', sans-serif" }}>
       {/* Sidebar */}
       <div className="w-[32%] bg-slate-800 text-white px-5 py-7 shrink-0 space-y-5">
         {/* Photo */}
