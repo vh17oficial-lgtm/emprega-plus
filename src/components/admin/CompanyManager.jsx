@@ -51,7 +51,7 @@ export default function CompanyManager() {
     setSaved(false);
   };
 
-  const deleteCompany = (id) => { setDraft(draft.filter((c) => c.id !== id)); setSaved(false); };
+  const deleteCompany = (id) => { if (!confirm('Tem certeza que deseja excluir esta empresa?')) return; setDraft(draft.filter((c) => c.id !== id)); setSaved(false); };
   const toggleCompany = (id) => { setDraft(draft.map((c) => (c.id === id ? { ...c, active: !c.active } : c))); setSaved(false); };
 
   const startEdit = (c) => { setEditingId(c.id); setEditForm({ name: c.name, logo: c.logo }); };

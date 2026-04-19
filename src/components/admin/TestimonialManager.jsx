@@ -37,7 +37,7 @@ export default function TestimonialManager() {
     setSaved(false);
   };
 
-  const deleteItem = (id) => { setDraft(draft.filter((t) => t.id !== id)); setSaved(false); };
+  const deleteItem = (id) => { if (!confirm('Tem certeza que deseja excluir este depoimento?')) return; setDraft(draft.filter((t) => t.id !== id)); setSaved(false); };
   const toggleItem = (id) => { setDraft(draft.map((t) => (t.id === id ? { ...t, active: !t.active } : t))); setSaved(false); };
 
   const startEdit = (t) => { setEditingId(t.id); setEditForm({ name: t.name, role: t.role, text: t.text, photo: t.photo, stars: t.stars }); };

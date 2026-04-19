@@ -50,7 +50,7 @@ export default function VideoManager() {
     setSaved(false);
   };
 
-  const deleteItem = (id) => { setDraft(draft.filter((v) => v.id !== id)); setSaved(false); };
+  const deleteItem = (id) => { if (!confirm('Tem certeza que deseja excluir este vídeo?')) return; setDraft(draft.filter((v) => v.id !== id)); setSaved(false); };
   const toggleItem = (id) => { setDraft(draft.map((v) => (v.id === id ? { ...v, active: !v.active } : v))); setSaved(false); };
 
   const startEdit = (v) => { setEditingId(v.id); setEditForm({ title: v.title, duration: v.duration, url: v.url || '', icon: v.icon, thumb: v.thumb }); };

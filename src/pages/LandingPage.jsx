@@ -11,21 +11,26 @@ import MediaShowcase from '../components/landing/MediaShowcase';
 import FeaturedJobs from '../components/landing/FeaturedJobs';
 import CTASection from '../components/landing/CTASection';
 import UserReviews from '../components/landing/UserReviews';
+import { useAppContext } from '../context/AppContext';
 
 export default function LandingPage() {
+  const { siteConfig } = useAppContext();
+  const s = siteConfig.sections || {};
+  const show = (key) => s[key] !== false;
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
       <main className="flex-1 pb-16 lg:pb-0">
-        <HeroSection />
-        <BrandMarquee />
-        <HowItWorks />
-        <Benefits />
-        <TestimonialsSection />
-        <MediaShowcase />
+        {show('hero') && <HeroSection />}
+        {show('partners') && <BrandMarquee />}
+        {show('howItWorks') && <HowItWorks />}
+        {show('features') && <Benefits />}
+        {show('testimonials') && <TestimonialsSection />}
+        {show('videos') && <MediaShowcase />}
         <FeaturedJobs />
-        <CTASection />
-        <UserReviews />
+        {show('cta') && <CTASection />}
+        {show('reviews') && <UserReviews />}
       </main>
       <div className="hidden lg:block">
         <Footer />

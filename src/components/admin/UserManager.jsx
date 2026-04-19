@@ -27,34 +27,50 @@ export default function UserManager() {
     const amount = parseInt(creditInputs[userId]) || 0;
     if (amount <= 0) return;
     const user = users.find((u) => u.id === userId);
-    await adminUpdateUser(userId, { sendCredits: (user.sendCredits || 0) + amount });
-    setCreditInputs((prev) => ({ ...prev, [userId]: '' }));
-    showFeedback(userId, `+${amount} créditos adicionados`);
+    try {
+      await adminUpdateUser(userId, { sendCredits: (user.sendCredits || 0) + amount });
+      setCreditInputs((prev) => ({ ...prev, [userId]: '' }));
+      showFeedback(userId, `+${amount} créditos adicionados`);
+    } catch (err) {
+      showFeedback(userId, `Erro: ${err.message}`);
+    }
     loadUsers();
   };
 
   const handleToggleDispatch = async (userId) => {
     const user = users.find((u) => u.id === userId);
-    await adminUpdateUser(userId, {
-      autoDispatchAccess: !user.autoDispatchAccess,
-      dailyDispatchLimit: !user.autoDispatchAccess ? 10 : user.dailyDispatchLimit,
-    });
-    showFeedback(userId, user.autoDispatchAccess ? 'Disparador desativado' : 'Disparador ativado');
+    try {
+      await adminUpdateUser(userId, {
+        autoDispatchAccess: !user.autoDispatchAccess,
+        dailyDispatchLimit: !user.autoDispatchAccess ? 10 : user.dailyDispatchLimit,
+      });
+      showFeedback(userId, user.autoDispatchAccess ? 'Disparador desativado' : 'Disparador ativado');
+    } catch (err) {
+      showFeedback(userId, `Erro: ${err.message}`);
+    }
     loadUsers();
   };
 
   const handleSetLimit = async (userId) => {
     const limit = parseInt(limitInputs[userId]) || 0;
     if (limit <= 0) return;
-    await adminUpdateUser(userId, { dailyDispatchLimit: limit });
-    setLimitInputs((prev) => ({ ...prev, [userId]: '' }));
-    showFeedback(userId, `Limite alterado para ${limit}/dia`);
+    try {
+      await adminUpdateUser(userId, { dailyDispatchLimit: limit });
+      setLimitInputs((prev) => ({ ...prev, [userId]: '' }));
+      showFeedback(userId, `Limite alterado para ${limit}/dia`);
+    } catch (err) {
+      showFeedback(userId, `Erro: ${err.message}`);
+    }
     loadUsers();
   };
 
   const handleSetUnlimited = async (userId) => {
-    await adminUpdateUser(userId, { dailyDispatchUnlimited: true });
-    showFeedback(userId, 'Limite ilimitado ativado');
+    try {
+      await adminUpdateUser(userId, { dailyDispatchUnlimited: true });
+      showFeedback(userId, 'Limite ilimitado ativado');
+    } catch (err) {
+      showFeedback(userId, `Erro: ${err.message}`);
+    }
     loadUsers();
   };
 

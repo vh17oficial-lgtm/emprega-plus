@@ -1,19 +1,27 @@
 const sections = [
+  { id: 'dashboard', label: '📊 Dashboard' },
   { id: 'vagas', label: '📋 Gestão de Vagas' },
   { id: 'gerador', label: '🔄 Gerar Vagas' },
   { id: 'landing', label: '🎨 Landing Page' },
+  { id: 'secoes', label: '🎛️ Seções da Landing' },
   { id: 'empresas', label: '🏢 Empresas' },
   { id: 'depoimentos', label: '⭐ Depoimentos' },
   { id: 'videos', label: '🎥 Vídeos' },
   { id: 'config', label: '⚙️ Configurações' },
+  { id: 'banner', label: '📢 Banner / Anúncios' },
+  { id: 'manutencao', label: '🔧 Manutenção' },
+  { id: 'seo', label: '🔍 SEO' },
   { id: 'planos', label: '💰 Planos de Envio' },
   { id: 'disparador', label: '🤖 Disparador' },
   { id: 'textos', label: '✏️ Textos de Upsell' },
   { id: 'provasocial', label: '🔔 Prova Social' },
   { id: 'rotacao', label: '🔁 Rotação de Vagas' },
+  { id: 'cupons', label: '🏷️ Cupons' },
+  { id: 'emails', label: '✉️ Templates de Email' },
   { id: 'candidaturas', label: '📊 Candidaturas' },
   { id: 'usuarios', label: '👥 Usuários' },
   { id: 'tickets', label: '💬 Chat Suporte' },
+  { id: 'auditoria', label: '📜 Auditoria' },
 ];
 
 export default function AdminSidebar({ activeSection, onSectionChange }) {

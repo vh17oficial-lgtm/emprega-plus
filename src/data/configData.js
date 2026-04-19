@@ -90,6 +90,41 @@ export const defaultSiteConfig = {
     maxResumesPerUser: 10,
     featuredJobsCount: 6,
   },
+
+  // Banner / Announcement
+  banner: {
+    enabled: false,
+    text: '',
+    type: 'info', // info, warning, success, promo
+    dismissible: true,
+  },
+
+  // Maintenance mode
+  maintenance: {
+    enabled: false,
+    title: 'Em manutenção',
+    message: 'Estamos realizando melhorias na plataforma. Voltamos em breve!',
+  },
+
+  // SEO
+  seo: {
+    title: 'Emprega+ | Plataforma de Empregabilidade',
+    description: 'Crie seu currículo profissional em minutos e se candidate a vagas de emprego com um clique. Plataforma gratuita.',
+    keywords: 'emprego, currículo, vagas, trabalho, candidatura, empregabilidade',
+    ogImage: '',
+  },
+
+  // Section visibility on landing page
+  sections: {
+    brandMarquee: true,
+    howItWorks: true,
+    benefits: true,
+    testimonials: true,
+    mediaShowcase: true,
+    featuredJobs: true,
+    ctaSection: true,
+    reviews: true,
+  },
 };
 
 export const defaultRotationConfig = {

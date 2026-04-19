@@ -202,7 +202,7 @@ export default function ApplicationManager() {
                       <td className="px-4 py-3">{getStatusBadge(app.status)}</td>
                       <td className="px-4 py-3">
                         <select
-                          value={app.rawStatus}
+                          value={app.status}
                           onChange={e => handleStatusChange(app.userId, app.jobId, e.target.value)}
                           className="text-xs border rounded px-2 py-1.5 cursor-pointer bg-white"
                         >

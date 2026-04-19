@@ -3,13 +3,18 @@ import { Link } from 'react-router-dom';
 import Header from '../components/common/Header';
 import Footer from '../components/common/Footer';
 import AdminSidebar from '../components/admin/AdminSidebar';
+import AdminDashboard from '../components/admin/AdminDashboard';
 import JobManager from '../components/admin/JobManager';
 import JobGenerator from '../components/admin/JobGenerator';
 import LandingEditor from '../components/admin/LandingEditor';
+import SectionVisibilityManager from '../components/admin/SectionVisibilityManager';
 import PlansManager from '../components/admin/PlansManager';
 import DispatcherConfig from '../components/admin/DispatcherConfig';
 import UpsellTextsEditor from '../components/admin/UpsellTextsEditor';
 import SiteConfigEditor from '../components/admin/SiteConfigEditor';
+import BannerManager from '../components/admin/BannerManager';
+import MaintenanceManager from '../components/admin/MaintenanceManager';
+import SeoManager from '../components/admin/SeoManager';
 import SocialProofManager from '../components/admin/SocialProofManager';
 import CompanyManager from '../components/admin/CompanyManager';
 import TestimonialManager from '../components/admin/TestimonialManager';
@@ -18,10 +23,13 @@ import RotationConfig from '../components/admin/RotationConfig';
 import ApplicationManager from '../components/admin/ApplicationManager';
 import UserManager from '../components/admin/UserManager';
 import TicketManager from '../components/admin/TicketManager';
+import CouponManager from '../components/admin/CouponManager';
+import EmailTemplateEditor from '../components/admin/EmailTemplateEditor';
+import AuditLogViewer from '../components/admin/AuditLogViewer';
 import { useAuth } from '../context/AuthContext';
 
 export default function AdminPanel() {
-  const [activeSection, setActiveSection] = useState('vagas');
+  const [activeSection, setActiveSection] = useState('dashboard');
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -45,21 +53,29 @@ export default function AdminPanel() {
 
           <div className="flex-1 min-w-0">
             <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-6 md:p-8">
+              {activeSection === 'dashboard' && <AdminDashboard />}
               {activeSection === 'vagas' && <JobManager />}
               {activeSection === 'gerador' && <JobGenerator />}
               {activeSection === 'landing' && <LandingEditor />}
+              {activeSection === 'secoes' && <SectionVisibilityManager />}
               {activeSection === 'empresas' && <CompanyManager />}
               {activeSection === 'depoimentos' && <TestimonialManager />}
               {activeSection === 'videos' && <VideoManager />}
               {activeSection === 'config' && <SiteConfigEditor />}
+              {activeSection === 'banner' && <BannerManager />}
+              {activeSection === 'manutencao' && <MaintenanceManager />}
+              {activeSection === 'seo' && <SeoManager />}
               {activeSection === 'planos' && <PlansManager />}
               {activeSection === 'disparador' && <DispatcherConfig />}
               {activeSection === 'textos' && <UpsellTextsEditor />}
               {activeSection === 'provasocial' && <SocialProofManager />}
               {activeSection === 'rotacao' && <RotationConfig />}
+              {activeSection === 'cupons' && <CouponManager />}
+              {activeSection === 'emails' && <EmailTemplateEditor />}
               {activeSection === 'candidaturas' && <ApplicationManager />}
               {activeSection === 'usuarios' && <UserManager />}
               {activeSection === 'tickets' && <TicketManager />}
+              {activeSection === 'auditoria' && <AuditLogViewer />}
             </div>
           </div>
         </div>
