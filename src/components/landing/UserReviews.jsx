@@ -17,18 +17,18 @@ export default function UserReviews() {
     return (
       <section className="py-10 px-6">
         <div className="max-w-md mx-auto text-center">
-          <CheckCircle className="h-9 w-9 text-emerald-500 mx-auto mb-3" />
-          <p className="text-base font-semibold text-gray-900">Obrigado pela sua avaliação!</p>
-          <p className="text-sm text-gray-500 mt-1">Sua opinião nos ajuda a melhorar.</p>
+          <CheckCircle className="h-9 w-9 text-emerald-400 mx-auto mb-3" />
+          <p className="text-base font-semibold text-white">Obrigado pela sua avaliação!</p>
+          <p className="text-sm text-white/50 mt-1">Sua opinião nos ajuda a melhorar.</p>
         </div>
       </section>
     );
   }
 
   return (
-    <section className="py-10 px-6 border-t border-gray-100">
+    <section className="py-10 px-6 border-t border-white/10">
       <div className="max-w-md mx-auto text-center">
-        <p className="text-sm font-medium text-gray-400 mb-3">Avalie sua experiência</p>
+        <p className="text-sm font-medium text-white/50 mb-3">Avalie sua experiência</p>
 
         <div className="flex justify-center gap-1 mb-4">
           {[1, 2, 3, 4, 5].map((star) => (
@@ -57,7 +57,7 @@ export default function UserReviews() {
             onChange={(e) => setComment(e.target.value)}
             placeholder="Deixe um comentário (opcional)"
             rows={2}
-            className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm resize-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+            className="w-full px-4 py-2.5 rounded-xl border border-white/20 bg-white/10 text-sm text-white placeholder-white/40 resize-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
           />
           <button
             type="submit"
