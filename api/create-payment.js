@@ -36,24 +36,18 @@ async function resolveProduct(productType, productId) {
 
   switch (productType) {
     case 'send_credits': {
-      const { data: plansRow } = await supabase
+      const { data: plans } = await supabase
         .from('send_plans')
-        .select('plans')
-        .eq('id', 1)
-        .single();
-      const plans = plansRow?.plans || [
-        { id: 'send-10', name: '10 Envios', credits: 10, price: 4.99 },
-        { id: 'send-20', name: '20 Envios', credits: 20, price: 8.99 },
-        { id: 'send-50', name: '50 Envios', credits: 50, price: 14.99 },
-      ];
-      const plan = plans.find(p => p.id === productId);
+        .select('*')
+        .order('sort_order');
+      const plan = (plans || []).find(p => p.id === productId);
       if (!plan) return null;
       return { name: plan.name, price: plan.price, grantedValue: plan.credits };
     }
 
     case 'auto_dispatch': {
       const { data: dispatchRow } = await supabase
-        .from('auto_dispatch_config')
+        .from('dispatch_config')
         .select('config')
         .eq('id', 1)
         .single();
@@ -67,7 +61,7 @@ async function resolveProduct(productType, productId) {
 
     case 'daily_limit_upgrade': {
       const { data: dispatchRow } = await supabase
-        .from('auto_dispatch_config')
+        .from('dispatch_config')
         .select('config')
         .eq('id', 1)
         .single();
