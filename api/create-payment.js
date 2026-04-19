@@ -188,23 +188,32 @@ export default async function handler(req, res) {
 
     const misticData = await misticRes.json();
 
+    // Handle multiple possible field names from MisticPay response
+    const qrBase64 = misticData.qrCodeBase64 || misticData.qrcodeBase64 || misticData.qrcode_base64 || null;
+    const qrUrl = misticData.qrCode || misticData.qrcodeUrl || misticData.qrcode_url || misticData.qr_code || null;
+    const misticTxId = misticData.transactionId || misticData.transaction_id || null;
+
+    // Log full response for debugging
+    console.log('MisticPay response:', JSON.stringify(misticData));
+
     // Update payment with MisticPay data
     await supabase
       .from('payments')
       .update({
-        mistic_transaction_id: misticData.transactionId || null,
-        qr_code_base64: misticData.qrCodeBase64 || null,
-        qr_code_url: misticData.qrcodeUrl || null,
+        mistic_transaction_id: misticTxId,
+        qr_code_base64: qrBase64,
+        qr_code_url: qrUrl,
       })
       .eq('id', payment.id);
 
     return res.status(200).json({
       paymentId: payment.id,
-      qrCodeBase64: misticData.qrCodeBase64 || null,
-      qrCodeUrl: misticData.qrcodeUrl || null,
+      qrCodeBase64: qrBase64,
+      qrCodeUrl: qrUrl,
       amount: product.price,
       productName: product.name,
       expiresAt,
+      _debug: process.env.NODE_ENV !== 'production' ? misticData : undefined,
     });
   } catch (err) {
     console.error('create-payment error:', err);
