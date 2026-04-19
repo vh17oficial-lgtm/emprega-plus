@@ -2,8 +2,60 @@ import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const misticClientId = process.env.MISTICPAY_CLIENT_ID;
+const misticClientSecret = process.env.MISTICPAY_CLIENT_SECRET;
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+// Check with MisticPay if a transaction is paid
+async function verifyWithMisticPay(transactionId) {
+  try {
+    // Try multiple auth approaches for the check endpoint
+    const headers = { 'Content-Type': 'application/json' };
+
+    // Approach 1: ci/cs headers (same as create)
+    const res1 = await fetch('https://api.misticpay.com/api/cashin/check', {
+      method: 'POST',
+      headers: { ...headers, 'ci': misticClientId, 'cs': misticClientSecret },
+      body: JSON.stringify({ transactionId }),
+    });
+
+    if (res1.ok) {
+      const data = await res1.json();
+      const inner = data.data || data;
+      console.log('MisticPay check response:', JSON.stringify(data));
+      return inner;
+    }
+
+    // Approach 2: x-api-key header
+    const res2 = await fetch('https://api.misticpay.com/api/cashin/check', {
+      method: 'POST',
+      headers: { ...headers, 'x-api-key': misticClientSecret },
+      body: JSON.stringify({ transactionId }),
+    });
+
+    if (res2.ok) {
+      const data = await res2.json();
+      const inner = data.data || data;
+      console.log('MisticPay check response (x-api-key):', JSON.stringify(data));
+      return inner;
+    }
+
+    console.error('MisticPay check failed:', res1.status, res2.status);
+    return null;
+  } catch (err) {
+    console.error('MisticPay check error:', err);
+    return null;
+  }
+}
+
+// Check if transaction state means "paid"
+function isPaidState(state) {
+  if (!state) return false;
+  const s = state.toUpperCase();
+  return ['COMPLETED', 'PAID', 'APPROVED', 'APROVADO', 'CONCLUIDO', 'CONCLUÍDA',
+    'PAGO', 'PAGA', 'FINALIZADO', 'FINALIZADA', 'SETTLED', 'SUCCESS'].includes(s);
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -33,20 +85,54 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'Pagamento não encontrado' });
     }
 
+    // Already completed
+    if (payment.status === 'completed') {
+      return res.status(200).json({
+        status: 'completed',
+        productName: payment.product_name,
+        amount: payment.amount,
+        completedAt: payment.completed_at,
+      });
+    }
+
     // Check expiry
     if (payment.status === 'pending' && new Date(payment.expires_at) < new Date()) {
-      await supabase
-        .from('payments')
-        .update({ status: 'expired' })
-        .eq('id', payment.id);
+      await supabase.from('payments').update({ status: 'expired' }).eq('id', payment.id);
       return res.status(200).json({ status: 'expired' });
+    }
+
+    // ACTIVE VERIFICATION: if still pending, check MisticPay directly
+    if (payment.status === 'pending') {
+      const misticResult = await verifyWithMisticPay(payment.transaction_id);
+
+      if (misticResult) {
+        const state = misticResult.transactionState || misticResult.state || misticResult.status;
+
+        if (isPaidState(state)) {
+          // Fulfill the payment
+          const { data: result, error: fulfillError } = await supabase.rpc('fulfill_payment', {
+            p_payment_id: payment.id,
+          });
+
+          if (fulfillError) {
+            console.error('check-payment: fulfillment error:', fulfillError);
+            return res.status(200).json({ status: 'pending', error: 'Fulfillment failed' });
+          }
+
+          console.log('check-payment: fulfilled via active check:', payment.id, result);
+          return res.status(200).json({
+            status: 'completed',
+            productName: payment.product_name,
+            amount: payment.amount,
+          });
+        }
+      }
     }
 
     return res.status(200).json({
       status: payment.status,
       productName: payment.product_name,
       amount: payment.amount,
-      completedAt: payment.completed_at,
     });
   } catch (err) {
     console.error('check-payment error:', err);
