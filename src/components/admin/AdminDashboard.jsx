@@ -4,45 +4,65 @@ import { supabase } from '../../lib/supabase';
 export default function AdminDashboard() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     async function loadStats() {
-      const [usersRes, jobsRes, appsRes, convsRes] = await Promise.all([
-        supabase.from('profiles').select('id, created_at, role', { count: 'exact', head: false }),
-        supabase.from('jobs').select('id, status, created_at', { count: 'exact', head: false }),
-        supabase.from('applications').select('id, status, applied_at', { count: 'exact', head: false }),
-        supabase.from('chat_conversations').select('id, status, unread_admin', { count: 'exact', head: false }),
-      ]);
+      try {
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+        const weekAgo = new Date(now.getTime() - 7 * 86400000).toISOString();
 
-      const users = usersRes.data || [];
-      const jobs = jobsRes.data || [];
-      const apps = appsRes.data || [];
-      const convs = convsRes.data || [];
+        const [
+          totalUsers, usersToday, usersWeek,
+          totalJobs, activeJobs,
+          totalApps, appsToday, appsWeek,
+          appsEnviada, appsAnalise, appsPre, appsEncerrada,
+          totalConvs, activeConvs, convsData,
+        ] = await Promise.all([
+          supabase.from('profiles').select('id', { count: 'exact', head: true }),
+          supabase.from('profiles').select('id', { count: 'exact', head: true }).gte('created_at', today),
+          supabase.from('profiles').select('id', { count: 'exact', head: true }).gte('created_at', weekAgo),
+          supabase.from('jobs').select('id', { count: 'exact', head: true }),
+          supabase.from('jobs').select('id', { count: 'exact', head: true }).eq('status', 'ativa'),
+          supabase.from('applications').select('id', { count: 'exact', head: true }),
+          supabase.from('applications').select('id', { count: 'exact', head: true }).gte('applied_at', today),
+          supabase.from('applications').select('id', { count: 'exact', head: true }).gte('applied_at', weekAgo),
+          supabase.from('applications').select('id', { count: 'exact', head: true }).eq('status', 'enviada'),
+          supabase.from('applications').select('id', { count: 'exact', head: true }).eq('status', 'em_analise'),
+          supabase.from('applications').select('id', { count: 'exact', head: true }).eq('status', 'pre_selecionado'),
+          supabase.from('applications').select('id', { count: 'exact', head: true }).eq('status', 'encerrada'),
+          supabase.from('chat_conversations').select('id', { count: 'exact', head: true }),
+          supabase.from('chat_conversations').select('id', { count: 'exact', head: true }).eq('status', 'active'),
+          supabase.from('chat_conversations').select('unread_admin'),
+        ]);
 
-      const now = new Date();
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const weekAgo = new Date(today.getTime() - 7 * 86400000);
+        const unread = (convsData.data || []).reduce((sum, c) => sum + (c.unread_admin || 0), 0);
 
-      setStats({
-        totalUsers: users.length,
-        newUsersToday: users.filter(u => u.created_at && new Date(u.created_at) >= today).length,
-        newUsersWeek: users.filter(u => u.created_at && new Date(u.created_at) >= weekAgo).length,
-        totalJobs: jobs.length,
-        activeJobs: jobs.filter(j => j.status === 'ativa').length,
-        closedJobs: jobs.filter(j => j.status !== 'ativa').length,
-        totalApps: apps.length,
-        appsToday: apps.filter(a => a.applied_at && new Date(a.applied_at) >= today).length,
-        appsWeek: apps.filter(a => a.applied_at && new Date(a.applied_at) >= weekAgo).length,
-        appsByStatus: {
-          enviada: apps.filter(a => a.status === 'enviada').length,
-          em_analise: apps.filter(a => a.status === 'em_analise').length,
-          pre_selecionado: apps.filter(a => a.status === 'pre_selecionado').length,
-          encerrada: apps.filter(a => a.status === 'encerrada').length,
-        },
-        totalConvs: convs.length,
-        activeConvs: convs.filter(c => c.status === 'active').length,
-        unreadMessages: convs.reduce((sum, c) => sum + (c.unread_admin || 0), 0),
-      });
+        setStats({
+          totalUsers: totalUsers.count || 0,
+          newUsersToday: usersToday.count || 0,
+          newUsersWeek: usersWeek.count || 0,
+          totalJobs: totalJobs.count || 0,
+          activeJobs: activeJobs.count || 0,
+          closedJobs: (totalJobs.count || 0) - (activeJobs.count || 0),
+          totalApps: totalApps.count || 0,
+          appsToday: appsToday.count || 0,
+          appsWeek: appsWeek.count || 0,
+          appsByStatus: {
+            enviada: appsEnviada.count || 0,
+            em_analise: appsAnalise.count || 0,
+            pre_selecionado: appsPre.count || 0,
+            encerrada: appsEncerrada.count || 0,
+          },
+          totalConvs: totalConvs.count || 0,
+          activeConvs: activeConvs.count || 0,
+          unreadMessages: unread,
+        });
+      } catch (err) {
+        console.error('Dashboard error:', err);
+        setError('Erro ao carregar métricas.');
+      }
       setLoading(false);
     }
     loadStats();
@@ -57,6 +77,20 @@ export default function AdminDashboard() {
         </div>
         <div className="text-center py-12">
           <div className="animate-spin h-8 w-8 border-2 border-indigo-500 border-t-transparent rounded-full mx-auto" />
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">📊 Dashboard</h3>
+        </div>
+        <div className="text-center py-12 text-red-500">
+          <p className="text-sm font-medium">{error}</p>
+          <button onClick={() => { setLoading(true); setError(null); }} className="mt-3 text-xs text-indigo-600 hover:underline cursor-pointer">Tentar novamente</button>
         </div>
       </div>
     );

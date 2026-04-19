@@ -1,16 +1,18 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AppProvider, useAppContext } from './context/AppContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SupportProvider } from './context/SupportContext';
-import LandingPage from './pages/LandingPage';
-import UserDashboard from './pages/UserDashboard';
-import AdminPanel from './pages/AdminPanel';
-import LoginPage from './pages/LoginPage';
 import TopographyBackground from './components/common/TopographyBackground';
 import SupportWidget from './components/common/SupportWidget';
 import SiteBanner from './components/common/SiteBanner';
 import SeoHead from './components/common/SeoHead';
 import MaintenancePage from './components/common/MaintenancePage';
+
+const LandingPage = lazy(() => import('./pages/LandingPage'));
+const UserDashboard = lazy(() => import('./pages/UserDashboard'));
+const AdminPanel = lazy(() => import('./pages/AdminPanel'));
+const LoginPage = lazy(() => import('./pages/LoginPage'));
 
 function ProtectedRoute({ children }) {
   const { isLoggedIn, loading } = useAuth();
@@ -81,12 +83,18 @@ function App() {
               <SiteBanner />
               <SeoHead />
               <MaintenanceGuard>
-                <Routes>
-                  <Route path="/" element={<LandingPage />} />
-                  <Route path="/login" element={<LoginPage />} />
-                  <Route path="/usuario" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
-                  <Route path="/admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
-                </Routes>
+                <Suspense fallback={
+                  <div className="min-h-screen flex items-center justify-center">
+                    <div className="animate-spin h-8 w-8 border-2 border-indigo-500 border-t-transparent rounded-full" />
+                  </div>
+                }>
+                  <Routes>
+                    <Route path="/" element={<LandingPage />} />
+                    <Route path="/login" element={<LoginPage />} />
+                    <Route path="/usuario" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
+                    <Route path="/admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
+                  </Routes>
+                </Suspense>
               </MaintenanceGuard>
             </div>
             <SupportWidget />

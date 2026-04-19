@@ -44,15 +44,25 @@ export default function CouponManager() {
   };
 
   const toggleActive = async (coupon) => {
-    await supabase.from('coupons').update({ active: !coupon.active }).eq('id', coupon.id);
-    await load();
+    try {
+      const { error } = await supabase.from('coupons').update({ active: !coupon.active }).eq('id', coupon.id);
+      if (error) throw error;
+      await load();
+    } catch (err) {
+      alert('Erro ao alterar cupom: ' + err.message);
+    }
   };
 
   const deleteCoupon = async (coupon) => {
     if (!confirm(`Excluir cupom "${coupon.code}"?`)) return;
-    await supabase.from('coupons').delete().eq('id', coupon.id);
-    await logAdminAction('coupon.delete', `Cupom: ${coupon.code}`);
-    await load();
+    try {
+      const { error } = await supabase.from('coupons').delete().eq('id', coupon.id);
+      if (error) throw error;
+      await logAdminAction('coupon.delete', `Cupom: ${coupon.code}`);
+      await load();
+    } catch (err) {
+      alert('Erro ao excluir cupom: ' + err.message);
+    }
   };
 
   if (loading) {

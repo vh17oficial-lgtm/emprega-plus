@@ -362,6 +362,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   const adminUpdateUser = useCallback(async (userId, updates) => {
+    if (user?.role !== 'admin') return;
     const cols = updatesToColumns(updates);
     if (Object.keys(cols).length > 0) {
       const { error } = await supabase

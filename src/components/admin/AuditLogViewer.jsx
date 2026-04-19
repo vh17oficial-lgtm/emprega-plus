@@ -19,15 +19,22 @@ export async function logAdminAction(action, details = '') {
 export default function AuditLogViewer() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     async function load() {
-      const { data } = await supabase
-        .from('admin_audit_logs')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(100);
-      setLogs(data || []);
+      try {
+        const { data, error: err } = await supabase
+          .from('admin_audit_logs')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(100);
+        if (err) throw err;
+        setLogs(data || []);
+      } catch (err) {
+        console.error('Audit log error:', err);
+        setError('Erro ao carregar logs.');
+      }
       setLoading(false);
     }
     load();
@@ -66,7 +73,11 @@ export default function AuditLogViewer() {
         <p className="text-sm text-gray-500 mt-1">Histórico das ações administrativas.</p>
       </div>
 
-      {logs.length === 0 ? (
+      {error ? (
+        <div className="text-center py-12 text-red-500">
+          <p className="text-sm font-medium">{error}</p>
+        </div>
+      ) : logs.length === 0 ? (
         <div className="text-center py-12 text-gray-400">
           <div className="text-4xl mb-3">📜</div>
           <p className="text-sm font-medium">Nenhum log registrado ainda.</p>
