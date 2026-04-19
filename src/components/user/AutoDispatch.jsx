@@ -32,7 +32,7 @@ export default function AutoDispatch() {
   const [currentCompany, setCurrentCompany] = useState('');
 
   // Filters
-  const [filters, setFilters] = useState({ category: '', workType: '', level: '', location: '' });
+  const [filters, setFilters] = useState({ category: '', workType: '', level: '', escolaridade: '', location: '' });
 
   // Resume selection
   const [selectedResumeId, setSelectedResumeId] = useState(null);
@@ -56,6 +56,7 @@ export default function AutoDispatch() {
       if (filters.category && job.category !== filters.category) return false;
       if (filters.workType && job.workType !== filters.workType) return false;
       if (filters.level && job.level !== filters.level) return false;
+      if (filters.escolaridade && job.escolaridade !== filters.escolaridade) return false;
       if (filters.location && !job.location.toLowerCase().includes(filters.location.toLowerCase())) return false;
       return true;
     });

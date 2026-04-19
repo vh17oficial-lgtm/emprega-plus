@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import Button from '../common/Button';
-import { JOB_CATEGORIES, WORK_TYPES, JOB_LEVELS } from '../../data/jobConstants';
+import { JOB_CATEGORIES, WORK_TYPES, JOB_LEVELS, EDUCATION_LEVELS } from '../../data/jobConstants';
 
 export default function JobForm({ job, onSave, onCancel }) {
   const [form, setForm] = useState({
@@ -13,6 +13,7 @@ export default function JobForm({ job, onSave, onCancel }) {
     level: job?.level || '',
     salary: job?.salary || '',
     cargaHoraria: job?.cargaHoraria || '8 horas/dia',
+    escolaridade: job?.escolaridade || '',
     informal: job?.informal || false,
     logo: job?.logo || '',
   });
@@ -80,6 +81,13 @@ export default function JobForm({ job, onSave, onCancel }) {
           <select name="level" value={form.level} onChange={handleChange} required className={selectClass}>
             <option value="">Selecione...</option>
             {JOB_LEVELS.map((l) => <option key={l} value={l}>{l}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Escolaridade</label>
+          <select name="escolaridade" value={form.escolaridade} onChange={handleChange} className={selectClass}>
+            <option value="">Selecione...</option>
+            {EDUCATION_LEVELS.map((e) => <option key={e} value={e}>{e}</option>)}
           </select>
         </div>
       </div>

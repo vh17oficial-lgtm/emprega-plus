@@ -269,6 +269,13 @@ export function generateJobs(count, startId = 1) {
     const cargaHoraria = genHours(workType);
     const descKey = informal ? 'Sem experiência informal' : level;
     const desc = pick(descTemplates[descKey])(title, company.name);
+    const escolaridadeByLevel = {
+      'Sem experiência': ['Não exigida', 'Ensino Fundamental', 'Ensino Médio'],
+      'Júnior': ['Ensino Médio', 'Ensino Técnico', 'Ensino Superior'],
+      'Pleno': ['Ensino Técnico', 'Ensino Superior'],
+      'Sênior': ['Ensino Superior', 'Pós-graduação'],
+    };
+    const escolaridade = pick(escolaridadeByLevel[level] || ['Não exigida']);
     const badges = [workType, level, category];
     if (informal) badges.push('Autônomo');
     if (level === 'Sem experiência' && Math.random() < 0.6) {
@@ -277,7 +284,7 @@ export function generateJobs(count, startId = 1) {
 
     jobs.push({
       id: id++, title, company: company.name, logo: company.logo,
-      location, description: desc, category, workType, level,
+      location, description: desc, category, workType, level, escolaridade,
       salary, cargaHoraria, badges, informal,
       status: 'ativa', createdAt: new Date().toISOString(),
     });

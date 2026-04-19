@@ -1,4 +1,4 @@
-import { JOB_CATEGORIES, WORK_TYPES, JOB_LEVELS } from '../../data/jobConstants';
+import { JOB_CATEGORIES, WORK_TYPES, JOB_LEVELS, EDUCATION_LEVELS } from '../../data/jobConstants';
 
 export default function DispatchFilters({ filters, onChange, matchCount }) {
   const updateFilter = (key, value) => {
@@ -6,15 +6,16 @@ export default function DispatchFilters({ filters, onChange, matchCount }) {
   };
 
   const clearAll = () => {
-    onChange({ category: '', workType: '', level: '', location: '' });
+    onChange({ category: '', workType: '', level: '', escolaridade: '', location: '' });
   };
 
-  const hasActiveFilters = filters.category || filters.workType || filters.level || filters.location;
+  const hasActiveFilters = filters.category || filters.workType || filters.level || filters.escolaridade || filters.location;
 
   const activeFiltersList = [
     filters.category && { key: 'category', label: filters.category },
     filters.workType && { key: 'workType', label: filters.workType },
     filters.level && { key: 'level', label: filters.level },
+    filters.escolaridade && { key: 'escolaridade', label: filters.escolaridade },
     filters.location && { key: 'location', label: filters.location },
   ].filter(Boolean);
 
@@ -34,7 +35,7 @@ export default function DispatchFilters({ filters, onChange, matchCount }) {
         )}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
         <select
           value={filters.category}
           onChange={(e) => updateFilter('category', e.target.value)}
@@ -65,6 +66,17 @@ export default function DispatchFilters({ filters, onChange, matchCount }) {
           <option value="">Todos os níveis</option>
           {JOB_LEVELS.map((l) => (
             <option key={l} value={l}>{l}</option>
+          ))}
+        </select>
+
+        <select
+          value={filters.escolaridade}
+          onChange={(e) => updateFilter('escolaridade', e.target.value)}
+          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white appearance-none cursor-pointer"
+        >
+          <option value="">Escolaridade</option>
+          {EDUCATION_LEVELS.map((e) => (
+            <option key={e} value={e}>{e}</option>
           ))}
         </select>
 

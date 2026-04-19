@@ -9,7 +9,7 @@ import Modal from '../common/Modal';
 import UpsellModal from '../common/UpsellModal';
 import PaymentModal from '../common/PaymentModal';
 
-const emptyFilters = { search: '', category: '', workType: '', level: '', location: '' };
+const emptyFilters = { search: '', category: '', workType: '', level: '', escolaridade: '', location: '' };
 
 export default function JobList() {
   const { jobs, applyToJob, isJobApplied, savedResumes, sendPlans, upsellTexts, getNewJobsToday, getActivityCount, getActiveJobs, getJobViews, getJobApplications } = useAppContext();
@@ -44,6 +44,7 @@ export default function JobList() {
       if (filters.category && job.category !== filters.category) return false;
       if (filters.workType && job.workType !== filters.workType) return false;
       if (filters.level && job.level !== filters.level) return false;
+      if (filters.escolaridade && job.escolaridade !== filters.escolaridade) return false;
       if (filters.location) {
         if (!job.location.toLowerCase().includes(filters.location.toLowerCase())) return false;
       }

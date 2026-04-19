@@ -97,6 +97,11 @@ export default function CardVaga({ job, onApply, applied, hasResume = true, jobV
                 {job.category}
               </span>
             )}
+            {job.escolaridade && job.escolaridade !== 'Não exigida' && (
+              <span className="text-xs font-medium px-2 py-1 rounded-md border bg-amber-50 text-amber-700 border-amber-200">
+                📚 {job.escolaridade}
+              </span>
+            )}
             {job.badges && job.badges.filter(b =>
               !['Home Office','Presencial','Híbrido','Sem experiência','Júnior','Pleno','Sênior','Autônomo'].includes(b)
               && b !== job.category

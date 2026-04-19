@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { JOB_CATEGORIES, WORK_TYPES, JOB_LEVELS } from '../../data/jobConstants';
+import { JOB_CATEGORIES, WORK_TYPES, JOB_LEVELS, EDUCATION_LEVELS } from '../../data/jobConstants';
 
-const emptyFilters = { search: '', category: '', workType: '', level: '', location: '' };
+const emptyFilters = { search: '', category: '', workType: '', level: '', escolaridade: '', location: '' };
 
 export default function JobFilters({ filters, onChange, resultCount, totalCount }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -27,7 +27,7 @@ export default function JobFilters({ filters, onChange, resultCount, totalCount 
     return () => { document.body.style.overflow = ''; };
   }, [mobileOpen]);
 
-  const labelMap = { search: 'Busca', category: 'Nicho', workType: 'Tipo', level: 'Nível', location: 'Local' };
+  const labelMap = { search: 'Busca', category: 'Nicho', workType: 'Tipo', level: 'Nível', escolaridade: 'Escolaridade', location: 'Local' };
 
   const inputClass = 'w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow';
   const selectClass = `${inputClass} appearance-none cursor-pointer`;
@@ -74,6 +74,14 @@ export default function JobFilters({ filters, onChange, resultCount, totalCount 
         </select>
       </div>
 
+      {/* Escolaridade */}
+      <div>
+        <select value={filters.escolaridade} onChange={(e) => set('escolaridade', e.target.value)} className={selectClass}>
+          <option value="">Escolaridade</option>
+          {EDUCATION_LEVELS.map((e) => <option key={e} value={e}>{e}</option>)}
+        </select>
+      </div>
+
       {/* Location */}
       <div>
         <input
@@ -90,7 +98,7 @@ export default function JobFilters({ filters, onChange, resultCount, totalCount 
   return (
     <div className="space-y-3 mb-6">
       {/* Desktop filters */}
-      <div className="hidden lg:grid lg:grid-cols-7 gap-3">
+      <div className="hidden lg:grid lg:grid-cols-8 gap-3">
         <FilterFields id="desktop" />
         {hasActive && (
           <div className="flex items-center">
@@ -171,6 +179,13 @@ export default function JobFilters({ filters, onChange, resultCount, totalCount 
                 <select value={filters.level} onChange={(e) => set('level', e.target.value)} className={selectClass}>
                   <option value="">Todos os níveis</option>
                   {JOB_LEVELS.map((l) => <option key={l} value={l}>{l}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wider">Escolaridade</label>
+                <select value={filters.escolaridade} onChange={(e) => set('escolaridade', e.target.value)} className={selectClass}>
+                  <option value="">Todas</option>
+                  {EDUCATION_LEVELS.map((e) => <option key={e} value={e}>{e}</option>)}
                 </select>
               </div>
               <div>
