@@ -19,6 +19,13 @@ const levelColors = {
   'Sênior': 'bg-rose-50 text-rose-700 border-rose-200',
 };
 
+const levelIcons = {
+  'Sem experiência': '🌱',
+  'Júnior': '⭐',
+  'Pleno': '🏅',
+  'Sênior': '👑',
+};
+
 function getUrgencyTag(job, applied) {
   if (job.status === 'encerrada' || applied) return null;
   const hash = ((job.id * 2654435761) >>> 0) % 100;
@@ -89,12 +96,12 @@ export default function CardVaga({ job, onApply, applied, hasResume = true, jobV
             )}
             {job.level && (
               <span className={`text-xs font-medium px-2 py-1 rounded-md border ${levelColors[job.level] || 'bg-gray-50 text-gray-600 border-gray-200'}`}>
-                {job.level}
+                {levelIcons[job.level] || '📊'} {job.level}
               </span>
             )}
             {job.category && (
               <span className="text-xs font-medium px-2 py-1 rounded-md border bg-indigo-50 text-indigo-600 border-indigo-200">
-                {job.category}
+                💼 {job.category}
               </span>
             )}
             {job.escolaridade && job.escolaridade !== 'Não exigida' && (
@@ -103,11 +110,11 @@ export default function CardVaga({ job, onApply, applied, hasResume = true, jobV
               </span>
             )}
             {job.badges && job.badges.filter(b =>
-              !['Home Office','Presencial','Híbrido','Sem experiência','Júnior','Pleno','Sênior','Autônomo'].includes(b)
+              !['Home Office','Remoto','Presencial','Híbrido','Sem experiência','Júnior','Pleno','Sênior','Autônomo'].includes(b)
               && b !== job.category
             ).map((badge, i) => (
               <span key={i} className="text-xs font-medium px-2 py-1 rounded-md border bg-teal-50 text-teal-700 border-teal-200">
-                🎓 {badge}
+                🏷️ {badge}
               </span>
             ))}
           </div>
@@ -132,7 +139,7 @@ export default function CardVaga({ job, onApply, applied, hasResume = true, jobV
             )}
             {job.informal && (
               <span className="text-xs font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                Autônomo
+                🤝 Autônomo
               </span>
             )}
           </div>
