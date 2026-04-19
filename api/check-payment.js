@@ -54,7 +54,8 @@ function isPaidState(state) {
   if (!state) return false;
   const s = state.toUpperCase();
   return ['COMPLETED', 'PAID', 'APPROVED', 'APROVADO', 'CONCLUIDO', 'CONCLUÍDA',
-    'PAGO', 'PAGA', 'FINALIZADO', 'FINALIZADA', 'SETTLED', 'SUCCESS'].includes(s);
+    'COMPLETO', 'COMPLETA', 'PAGO', 'PAGA', 'FINALIZADO', 'FINALIZADA',
+    'SETTLED', 'SUCCESS'].includes(s);
 }
 
 export default async function handler(req, res) {
