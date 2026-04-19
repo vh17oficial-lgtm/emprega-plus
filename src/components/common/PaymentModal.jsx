@@ -25,6 +25,7 @@ export default function PaymentModal({ isOpen, onClose, plan, productType, produ
   const [qrData, setQrData] = useState(null);
   const [paymentId, setPaymentId] = useState(null);
   const [timeLeft, setTimeLeft] = useState(EXPIRE_MINUTES * 60);
+  const [copied, setCopied] = useState(false);
   const pollRef = useRef(null);
   const timerRef = useRef(null);
 
@@ -337,6 +338,16 @@ export default function PaymentModal({ isOpen, onClose, plan, productType, produ
                 <p className="text-sm text-gray-600 mb-1">
                   Escaneie o QR Code com o app do seu banco
                 </p>
+
+                {/* PIX Copia e Cola */}
+                {qrData.copyPaste && (
+                  <button
+                    onClick={() => { navigator.clipboard.writeText(qrData.copyPaste); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
+                    className="w-full mb-3 px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-500 hover:bg-gray-100 cursor-pointer transition-colors truncate"
+                  >
+                    {copied ? '✅ Código copiado!' : '📋 Copiar código Pix Copia e Cola'}
+                  </button>
+                )}
 
                 {/* Polling indicator */}
                 <div className="flex items-center justify-center gap-2 text-xs text-gray-400 mb-4">

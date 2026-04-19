@@ -188,13 +188,12 @@ export default async function handler(req, res) {
 
     const misticData = await misticRes.json();
 
-    // Handle multiple possible field names from MisticPay response
-    const qrBase64 = misticData.qrCodeBase64 || misticData.qrcodeBase64 || misticData.qrcode_base64 || null;
-    const qrUrl = misticData.qrCode || misticData.qrcodeUrl || misticData.qrcode_url || misticData.qr_code || null;
-    const misticTxId = misticData.transactionId || misticData.transaction_id || null;
-
-    // Log full response for debugging
-    console.log('MisticPay response:', JSON.stringify(misticData));
+    // MisticPay wraps response in a "data" object
+    const mData = misticData.data || misticData;
+    const qrBase64 = mData.qrCodeBase64 || null;
+    const qrUrl = mData.qrcodeUrl || mData.qrCode || null;
+    const misticTxId = mData.transactionId || null;
+    const copyPaste = mData.copyPaste || null;
 
     // Update payment with MisticPay data
     await supabase
@@ -210,10 +209,10 @@ export default async function handler(req, res) {
       paymentId: payment.id,
       qrCodeBase64: qrBase64,
       qrCodeUrl: qrUrl,
+      copyPaste,
       amount: product.price,
       productName: product.name,
       expiresAt,
-      _debug: process.env.NODE_ENV !== 'production' ? misticData : undefined,
     });
   } catch (err) {
     console.error('create-payment error:', err);
