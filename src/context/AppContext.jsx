@@ -14,6 +14,7 @@ function jobFromRow(r) {
     id: r.id, title: r.title, company: r.company, logo: r.logo || '',
     location: r.location || '', description: r.description || '',
     category: r.category || '', workType: r.work_type || '', level: r.level || '',
+    escolaridade: r.escolaridade || '',
     salary: r.salary || '', cargaHoraria: r.carga_horaria || '',
     badges: r.badges || [], informal: !!r.informal,
     status: r.status || 'ativa',
@@ -26,6 +27,7 @@ function jobToRow(j) {
     title: j.title, company: j.company, logo: j.logo || '',
     location: j.location || '', description: j.description || '',
     category: j.category || '', work_type: j.workType || '', level: j.level || '',
+    escolaridade: j.escolaridade || '',
     salary: j.salary || '', carga_horaria: j.cargaHoraria || '',
     badges: j.badges || [], informal: !!j.informal,
     status: j.status || 'ativa',
@@ -259,6 +261,7 @@ export function AppProvider({ children }) {
     if (updatedJob.category !== undefined) cols.category = updatedJob.category;
     if (updatedJob.workType !== undefined) cols.work_type = updatedJob.workType;
     if (updatedJob.level !== undefined) cols.level = updatedJob.level;
+    if (updatedJob.escolaridade !== undefined) cols.escolaridade = updatedJob.escolaridade;
     if (updatedJob.salary !== undefined) cols.salary = updatedJob.salary;
     if (updatedJob.cargaHoraria !== undefined) cols.carga_horaria = updatedJob.cargaHoraria;
     if (updatedJob.badges !== undefined) cols.badges = updatedJob.badges;
@@ -290,16 +293,25 @@ export function AppProvider({ children }) {
 
   const regenerateAllJobs = async (count) => {
     const newJobs = generateJobs(count, 1);
+    // Delete applications first (cascade would handle it, but clear local state too)
+    await supabase.from('applications').delete().neq('id', 0);
+    setAppliedJobs([]);
     const { error: delErr } = await supabase.from('jobs').delete().neq('id', 0);
     if (delErr) { console.error('Erro ao deletar vagas:', delErr.message, delErr); alert('Erro ao deletar vagas: ' + delErr.message); return 0; }
     const rows = newJobs.map(j => ({
       ...jobToRow(j),
       created_at: new Date(Date.now() - Math.random() * 5 * 86400000).toISOString(),
     }));
-    const { data, error: insErr } = await supabase.from('jobs').insert(rows).select();
-    if (insErr) { console.error('Erro ao inserir vagas:', insErr.message, insErr); alert('Erro ao inserir vagas: ' + insErr.message); return 0; }
-    if (data) setJobs(data.map(jobFromRow));
-    return data?.length || 0;
+    // Insert in batches of 200 to avoid payload limits
+    let allInserted = [];
+    for (let i = 0; i < rows.length; i += 200) {
+      const batch = rows.slice(i, i + 200);
+      const { data, error: insErr } = await supabase.from('jobs').insert(batch).select();
+      if (insErr) { console.error('Erro ao inserir vagas (lote):', insErr.message, insErr); alert('Erro ao inserir vagas: ' + insErr.message); break; }
+      if (data) allInserted = allInserted.concat(data);
+    }
+    if (allInserted.length > 0) setJobs(allInserted.map(jobFromRow));
+    return allInserted.length;
   };
 
   const updateLandingTexts = (newTexts) => {
@@ -616,7 +628,7 @@ export function AppProvider({ children }) {
     return () => { cancelled = true; };
   }, [rotationConfig.enabled, jobs.length > 0]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const manualRotation = () => performRotationInternal();
+  const manualRotation = async () => await performRotationInternal();
 
   // ============================================
   // UTILITY FUNCTIONS (unchanged)

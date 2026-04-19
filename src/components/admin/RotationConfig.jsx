@@ -1,21 +1,28 @@
+import { useState, useEffect } from 'react';
+import { createClient } from '@supabase/supabase-js';
 import { useAppContext } from '../../context/AppContext';
+
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+);
 
 export default function RotationConfig() {
   const { rotationConfig, updateRotationConfig, manualRotation, jobs, appliedJobs } = useAppContext();
+  const [lastRotation, setLastRotation] = useState('Nunca');
+
+  useEffect(() => {
+    supabase.from('rotation_config').select('last_rotation').eq('id', 1).single()
+      .then(({ data }) => {
+        if (data?.last_rotation) {
+          setLastRotation(new Date(data.last_rotation).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }));
+        }
+      });
+  }, []);
 
   const activeCount = jobs.filter(j => j.status !== 'encerrada').length;
   const closedCount = jobs.filter(j => j.status === 'encerrada').length;
-  const closedApps = appliedJobs.filter(a => {
-    if (typeof a !== 'object') return false;
-    return a.status === 'encerrada';
-  }).length;
-
-  const lastRotation = (() => {
-    try {
-      const d = localStorage.getItem('emprega_last_rotation');
-      return d ? new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Nunca';
-    } catch { return 'Nunca'; }
-  })();
+  const closedApps = appliedJobs.filter(a => a && typeof a === 'object' && a.status === 'encerrada').length;
 
   return (
     <div className="space-y-6">
@@ -117,6 +124,7 @@ export default function RotationConfig() {
           onClick={async () => {
             if (window.confirm(`Isso vai encerrar ${rotationConfig.rotateCount} vagas e gerar ${rotationConfig.rotateCount} novas. Continuar?`)) {
               await manualRotation();
+              setLastRotation(new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }));
             }
           }}
           className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-bold py-3 rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all cursor-pointer hover:shadow-lg"
