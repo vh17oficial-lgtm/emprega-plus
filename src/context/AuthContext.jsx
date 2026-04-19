@@ -132,12 +132,18 @@ export function AuthProvider({ children }) {
 
   const isLoggedIn = !!user;
 
-  // --- Persist updates to Supabase ---
-  const _updateUser = useCallback(async (updates) => {
+  // Refresh profile from DB (source of truth after RPC calls)
+  const _refreshProfile = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user || !mountedRef.current) return;
+    const profile = await fetchProfile(session.user.id);
+    if (profile && mountedRef.current) setUser(profile);
+  }, [fetchProfile]);
+
+  // Persist SAFE field updates to Supabase (nome, telefone, cidade, estado, foto)
+  const _updateSafeFields = useCallback(async (updates) => {
     if (!user) return;
-    // Optimistic local update
     setUser((prev) => (prev ? { ...prev, ...updates } : prev));
-    // Persist to Supabase
     const cols = updatesToColumns(updates);
     if (Object.keys(cols).length > 0) {
       const { error } = await supabase
@@ -189,19 +195,9 @@ export function AuthProvider({ children }) {
       return { success: false, error: 'Email ou senha incorretos.' };
     }
     if (data.user) {
+      // Reset daily dispatch server-side using DB time
+      await supabase.rpc('reset_daily_dispatch_if_needed');
       const profile = await fetchProfile(data.user.id);
-      if (profile) {
-        // Reset daily dispatch if day changed
-        const today = new Date().toDateString();
-        if (profile.lastDispatchDate !== today) {
-          profile.dailyDispatchUsed = 0;
-          profile.lastDispatchDate = today;
-          await supabase.from('profiles').update({
-            daily_dispatch_used: 0,
-            last_dispatch_date: today,
-          }).eq('id', data.user.id);
-        }
-      }
       if (mountedRef.current) setUser(profile);
     }
     return { success: true };
@@ -225,98 +221,98 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
-  // --- Send credits ---
+  // --- Send credits (via secure RPC) ---
   const hasSendCredits = () => (user?.sendCredits || 0) > 0;
 
-  const consumeSendCredit = () => {
+  const consumeSendCredit = async () => {
     if (!user || user.sendCredits <= 0) return false;
-    _updateUser({ sendCredits: user.sendCredits - 1 });
-    return true;
+    // Optimistic update
+    setUser((prev) => prev ? { ...prev, sendCredits: prev.sendCredits - 1 } : prev);
+    const { data, error } = await supabase.rpc('consume_send_credit');
+    if (error) {
+      console.error('Erro ao consumir crédito:', error.message);
+      _refreshProfile();
+      return false;
+    }
+    if (!data) _refreshProfile();
+    return !!data;
   };
 
-  const addSendCredits = (amount, planName, planPrice) => {
-    _updateUser({
-      sendCredits: (user?.sendCredits || 0) + amount,
-      purchaseHistory: [
-        ...(user?.purchaseHistory || []),
-        { type: 'send_credits', name: planName, amount, price: planPrice, date: new Date().toLocaleString('pt-BR') },
-      ],
+  const addSendCredits = async (amount, planName, planPrice) => {
+    // Optimistic update
+    setUser((prev) => prev ? {
+      ...prev,
+      sendCredits: (prev.sendCredits || 0) + amount,
+    } : prev);
+    const { error } = await supabase.rpc('add_send_credits', {
+      p_amount: amount,
+      p_plan_name: planName,
+      p_plan_price: planPrice,
     });
+    if (error) console.error('Erro ao adicionar créditos:', error.message);
+    _refreshProfile();
   };
 
-  // --- Auto dispatch ---
+  // --- Auto dispatch (via secure RPC) ---
   const hasAutoDispatchAccess = () => !!user?.autoDispatchAccess;
 
   const getDailyDispatchRemaining = () => {
     if (!user?.autoDispatchAccess) return 0;
     if (user.dailyDispatchUnlimited) return Infinity;
-    const today = new Date().toDateString();
-    if (user.lastDispatchDate !== today) return user.dailyDispatchLimit;
     return Math.max(0, user.dailyDispatchLimit - user.dailyDispatchUsed);
   };
 
-  const consumeDailyDispatch = (count) => {
+  const consumeDailyDispatch = async (count) => {
     if (!user?.autoDispatchAccess) return 0;
-    const remaining = getDailyDispatchRemaining();
-    const actual = Math.min(count, remaining);
-    if (actual <= 0) return 0;
-    const today = new Date().toDateString();
-    const newUsed = user.lastDispatchDate === today ? user.dailyDispatchUsed + actual : actual;
-    _updateUser({ dailyDispatchUsed: newUsed, lastDispatchDate: today });
-    return actual;
+    const { data, error } = await supabase.rpc('consume_daily_dispatch', { p_count: count });
+    if (error) {
+      console.error('Erro ao consumir dispatch:', error.message);
+      _refreshProfile();
+      return 0;
+    }
+    _refreshProfile();
+    return data || 0;
   };
 
-  const purchaseAutoDispatch = (initialDailyLimit, price) => {
-    _updateUser({
-      autoDispatchAccess: true,
-      dailyDispatchLimit: initialDailyLimit,
-      dailyDispatchUsed: 0,
-      lastDispatchDate: new Date().toDateString(),
-      purchaseHistory: [
-        ...(user?.purchaseHistory || []),
-        { type: 'auto_dispatch', name: 'Disparador Automático', price, date: new Date().toLocaleString('pt-BR') },
-      ],
+  const purchaseAutoDispatch = async (initialDailyLimit, price) => {
+    setUser((prev) => prev ? { ...prev, autoDispatchAccess: true } : prev);
+    const { error } = await supabase.rpc('purchase_auto_dispatch', {
+      p_daily_limit: initialDailyLimit,
+      p_price: price,
     });
+    if (error) console.error('Erro ao comprar dispatch:', error.message);
+    _refreshProfile();
   };
 
-  const upgradeDailyLimit = (amount, label, price) => {
-    const limitUpdates = amount === -1
-      ? { dailyDispatchUnlimited: true }
-      : { dailyDispatchLimit: (user?.dailyDispatchLimit || 0) + amount };
-    _updateUser({
-      ...limitUpdates,
-      purchaseHistory: [
-        ...(user?.purchaseHistory || []),
-        { type: 'dispatch_upgrade', name: label, price, date: new Date().toLocaleString('pt-BR') },
-      ],
+  const upgradeDailyLimit = async (amount, label, price) => {
+    const { error } = await supabase.rpc('upgrade_daily_limit', {
+      p_amount: amount,
+      p_label: label,
+      p_price: price,
     });
+    if (error) console.error('Erro ao upgrade dispatch:', error.message);
+    _refreshProfile();
   };
 
-  // --- Priority resume ---
+  // --- Priority resume (via secure RPC) ---
   const hasPurchased = () => (user?.purchaseHistory || []).length > 0;
   const isPriorityUser = () => !!user?.isPriorityUser;
 
-  const purchasePriority = () => {
-    _updateUser({
-      isPriorityUser: true,
-      purchaseHistory: [
-        ...(user?.purchaseHistory || []),
-        { type: 'priority_resume', name: 'Currículo com Prioridade', price: 9.99, date: new Date().toLocaleString('pt-BR') },
-      ],
-    });
+  const purchasePriority = async () => {
+    setUser((prev) => prev ? { ...prev, isPriorityUser: true } : prev);
+    const { error } = await supabase.rpc('purchase_priority');
+    if (error) console.error('Erro ao comprar prioridade:', error.message);
+    _refreshProfile();
   };
 
-  // --- PDF download access ---
+  // --- PDF download access (via secure RPC) ---
   const hasPdfAccess = () => !!user?.pdfDownloadAccess;
 
-  const purchasePdfAccess = (price) => {
-    _updateUser({
-      pdfDownloadAccess: true,
-      purchaseHistory: [
-        ...(user?.purchaseHistory || []),
-        { type: 'pdf_download', name: 'Download de Currículo em PDF', price, date: new Date().toLocaleString('pt-BR') },
-      ],
-    });
+  const purchasePdfAccess = async (price) => {
+    setUser((prev) => prev ? { ...prev, pdfDownloadAccess: true } : prev);
+    const { error } = await supabase.rpc('purchase_pdf_access', { p_price: price });
+    if (error) console.error('Erro ao comprar PDF:', error.message);
+    _refreshProfile();
   };
 
   // --- Profile ---
@@ -328,7 +324,7 @@ export function AuthProvider({ children }) {
     if (updates.cidade !== undefined) allowed.cidade = updates.cidade;
     if (updates.estado !== undefined) allowed.estado = updates.estado;
     if (updates.fotoPerfil !== undefined) allowed.fotoPerfil = updates.fotoPerfil;
-    await _updateUser(allowed);
+    await _updateSafeFields(allowed);
     return { success: true };
   };
 
