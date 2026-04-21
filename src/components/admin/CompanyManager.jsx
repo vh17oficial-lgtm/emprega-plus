@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { cacheBust } from '../../utils/cacheBust';
 
@@ -17,11 +17,15 @@ export default function CompanyManager() {
 
   const [draft, setDraft] = useState(() => structuredClone(companies));
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({ name: '', logo: '' });
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState('');
   const [search, setSearch] = useState('');
+
+  // Keep draft in sync when companies reloads from DB (after save returns new ids)
+  useEffect(() => { setDraft(structuredClone(companies)); }, [companies]);
 
   const hasChanges = useMemo(() => JSON.stringify(draft) !== JSON.stringify(companies), [draft, companies]);
 
@@ -35,9 +39,14 @@ export default function CompanyManager() {
   const activeCount = draft.filter(c => c.active).length;
 
   const handleSave = async () => {
-    await updateCompanies(draft);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    setSaving(true);
+    try {
+      await updateCompanies(draft);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } finally {
+      setSaving(false);
+    }
   };
   const handleDiscard = () => { setDraft(structuredClone(companies)); setSaved(false); };
 
@@ -97,8 +106,8 @@ export default function CompanyManager() {
         </span>
         <div className="flex items-center gap-2">
           {hasChanges && <button onClick={handleDiscard} className="text-xs text-gray-500 hover:text-gray-700 px-3 py-1.5 cursor-pointer font-medium">Descartar</button>}
-          <button onClick={handleSave} disabled={!hasChanges} className={`px-5 py-2 rounded-lg text-sm font-bold transition-all cursor-pointer ${hasChanges ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-md' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}>
-            💾 Salvar
+          <button onClick={handleSave} disabled={saving} className={`px-5 py-2 rounded-lg text-sm font-bold transition-all cursor-pointer ${saving ? 'bg-gray-300 text-gray-500 cursor-wait' : hasChanges ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-md' : 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-md'}`}>
+            {saving ? '⏳ Salvando...' : hasChanges ? '💾 Salvar' : '✓ Tudo salvo'}
           </button>
         </div>
       </div>
