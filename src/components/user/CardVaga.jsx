@@ -1,4 +1,5 @@
 import { cacheBust } from '../../utils/cacheBust';
+import { buildJobTags, getApplicantsToday, getHighDemand } from '../../utils/jobDetailsBuilder';
 
 const workTypeColors = {
   'Presencial': 'bg-blue-50 text-blue-700 border-blue-200',
@@ -34,17 +35,29 @@ function getUrgencyTag(job, applied) {
   return null;
 }
 
-export default function CardVaga({ job, onApply, applied, hasResume = true, jobViews, jobApplications }) {
+export default function CardVaga({ job, onApply, applied, hasResume = true, jobViews, jobApplications, onSelect, selected }) {
   const isClosed = job.status === 'encerrada';
   const urgencyTag = getUrgencyTag(job, applied);
+  const computedTags = buildJobTags(job);
+  const applicantsToday = getApplicantsToday(job.id);
+  const highDemand = getHighDemand(job.id);
+
+  const handleCardClick = (e) => {
+    if (e.target.closest('button')) return;
+    onSelect?.(job);
+  };
 
   return (
-    <div className={`bg-white border rounded-xl p-4 sm:p-5 w-full max-w-full overflow-hidden box-border transition-all duration-200 ${
+    <div
+      onClick={handleCardClick}
+      className={`bg-white border rounded-xl p-4 sm:p-5 w-full max-w-full overflow-hidden box-border transition-all duration-200 cursor-pointer ${
       isClosed
         ? 'border-gray-200 bg-gray-50/60 opacity-60'
-        : applied
-          ? 'border-emerald-200 bg-emerald-50/30'
-          : 'border-gray-200 hover:border-indigo-300 hover:shadow-md hover:-translate-y-0.5'
+        : selected
+          ? 'border-indigo-400 ring-2 ring-indigo-200 shadow-md'
+          : applied
+            ? 'border-emerald-200 bg-emerald-50/30'
+            : 'border-gray-200 hover:border-indigo-300 hover:shadow-md hover:-translate-y-0.5'
     }`}>
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
         <div className="flex-1 min-w-0 overflow-hidden">
@@ -86,15 +99,17 @@ export default function CardVaga({ job, onApply, applied, hasResume = true, jobV
 
           {/* Tags */}
           <div className="flex flex-wrap items-center gap-1.5 mb-3">
-            <span className="inline-flex items-center gap-1 text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded-md border border-gray-100 max-w-full">
-              <span className="truncate">📍 {job.location}</span>
-            </span>
+            {job.location && job.location.toLowerCase() !== 'remoto' && (
+              <span className="inline-flex items-center gap-1 text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded-md border border-gray-100 max-w-full">
+                <span className="truncate">📍 {job.location}</span>
+              </span>
+            )}
             {job.workType && (
               <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md border ${workTypeColors[job.workType] || 'bg-gray-50 text-gray-600 border-gray-200'}`}>
                 {workTypeIcons[job.workType] || ''} {job.workType}
               </span>
             )}
-            {job.level && (
+            {job.level && job.level !== 'Sem experiência' && (
               <span className={`text-xs font-medium px-2 py-1 rounded-md border ${levelColors[job.level] || 'bg-gray-50 text-gray-600 border-gray-200'}`}>
                 {levelIcons[job.level] || '📊'} {job.level}
               </span>
@@ -104,14 +119,20 @@ export default function CardVaga({ job, onApply, applied, hasResume = true, jobV
                 💼 {job.category}
               </span>
             )}
-            {job.escolaridade && job.escolaridade !== 'Não exigida' && (
-              <span className="text-xs font-medium px-2 py-1 rounded-md border bg-amber-50 text-amber-700 border-amber-200">
-                📚 {job.escolaridade}
+            {computedTags.map((t, i) => (
+              <span key={`ct-${i}`} className="text-xs font-medium px-2 py-1 rounded-md border bg-indigo-50 text-indigo-700 border-indigo-200">
+                ✓ {t}
+              </span>
+            ))}
+            {highDemand && (
+              <span className="text-xs font-semibold px-2 py-1 rounded-md border bg-rose-50 text-rose-700 border-rose-200">
+                🔥 Alta procura
               </span>
             )}
             {job.badges && job.badges.filter(b =>
               !['Home Office','Remoto','Presencial','Híbrido','Sem experiência','Júnior','Pleno','Sênior','Autônomo'].includes(b)
               && b !== job.category
+              && !/treinamento|capacita|integra/i.test(b)
             ).map((badge, i) => (
               <span key={i} className="text-xs font-medium px-2 py-1 rounded-md border bg-teal-50 text-teal-700 border-teal-200">
                 🏷️ {badge}
@@ -145,8 +166,9 @@ export default function CardVaga({ job, onApply, applied, hasResume = true, jobV
           </div>
 
           {/* Activity indicators */}
-          {!isClosed && (jobViews || jobApplications) && (
+          {!isClosed && (
             <div className="flex flex-wrap items-center gap-3 mt-2 text-[11px] text-gray-400">
+              <span className="text-indigo-600 font-medium">⚡ {applicantsToday} pessoas se candidataram hoje</span>
               {jobViews > 0 && <span>👁️ {jobViews} visualizações</span>}
               {jobApplications > 0 && <span>📩 {jobApplications} candidaturas</span>}
             </div>
@@ -167,17 +189,17 @@ export default function CardVaga({ job, onApply, applied, hasResume = true, jobV
             </span>
           ) : !hasResume ? (
             <button
-              onClick={() => onApply(job)}
+              onClick={(e) => { e.stopPropagation(); onApply(job); }}
               className="inline-flex items-center justify-center gap-1.5 bg-amber-50 text-amber-700 text-xs font-medium px-4 py-2.5 rounded-xl border border-amber-200 cursor-pointer hover:bg-amber-100 transition-all duration-200 w-full sm:w-auto"
             >
               📋 Criar currículo primeiro
             </button>
           ) : (
             <button
-              onClick={() => onApply(job)}
+              onClick={(e) => { e.stopPropagation(); onApply(job); }}
               className="inline-flex items-center justify-center gap-1.5 bg-indigo-600 text-white text-xs font-bold px-5 py-2.5 rounded-xl cursor-pointer hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-200 transition-all duration-200 active:scale-95 w-full sm:w-auto"
             >
-              🚀 Quero me candidatar
+              🚀 CANDIDATAR-SE
             </button>
           )}
         </div>

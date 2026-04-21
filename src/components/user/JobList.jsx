@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
 import CardVaga from './CardVaga';
@@ -8,6 +8,7 @@ import ResumeSelectorModal from './ResumeSelectorModal';
 import Modal from '../common/Modal';
 import UpsellModal from '../common/UpsellModal';
 import PaymentModal from '../common/PaymentModal';
+import { JobDetailPanelDesktop, JobDetailSheetMobile } from './JobDetailPanel';
 
 const emptyFilters = { search: '', category: '', workType: '', level: '', escolaridade: '', location: '' };
 
@@ -25,6 +26,17 @@ export default function JobList() {
   const [showUpsell, setShowUpsell] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [pendingJob, setPendingJob] = useState(null);
+
+  // Detail panel selection (desktop side panel + mobile bottom sheet)
+  const [detailJob, setDetailJob] = useState(null);
+  const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
+
+  const handleSelectJob = (job) => {
+    setDetailJob(job);
+    if (typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches) {
+      setMobileSheetOpen(true);
+    }
+  };
 
   // Resume selector
   const [showResumeSelector, setShowResumeSelector] = useState(false);
@@ -64,6 +76,17 @@ export default function JobList() {
     prevFiltersRef.current = filters;
     if (page !== 1) setPage(1);
   }
+
+  // Auto-select first job on desktop so the right panel never starts empty
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const isDesktop = window.matchMedia('(min-width: 1024px)').matches;
+    if (!isDesktop) return;
+    if (paginatedJobs.length === 0) { setDetailJob(null); return; }
+    if (!detailJob || !paginatedJobs.find(j => j.id === detailJob.id)) {
+      setDetailJob(paginatedJobs[0]);
+    }
+  }, [paginatedJobs, detailJob]);
 
   const startApplication = (job, resumeId) => {
     consumeSendCredit();
@@ -185,60 +208,87 @@ export default function JobList() {
         </div>
       ) : (
         <>
-          <div className="grid gap-4 min-w-0 w-full">
-            {paginatedJobs.map((job) => (
-              <CardVaga key={job.id} job={job} onApply={handleApply} applied={isJobApplied(job.id)} hasResume={hasResume} jobViews={getJobViews(job.id)} jobApplications={getJobApplications(job.id)} />
-            ))}
-          </div>
+          <div className="grid gap-4 lg:grid-cols-12 min-w-0 w-full">
+            <div className="lg:col-span-7 flex flex-col gap-4 min-w-0">
+              {paginatedJobs.map((job) => (
+                <CardVaga
+                  key={job.id}
+                  job={job}
+                  onApply={handleApply}
+                  applied={isJobApplied(job.id)}
+                  hasResume={hasResume}
+                  jobViews={getJobViews(job.id)}
+                  jobApplications={getJobApplications(job.id)}
+                  onSelect={handleSelectJob}
+                  selected={detailJob?.id === job.id}
+                />
+              ))}
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 mt-6">
-              <button
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="px-2.5 sm:px-3 py-2 text-xs sm:text-sm font-medium rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
-              >
-                ← Anterior
-              </button>
-              <div className="flex items-center gap-1">
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  let pageNum;
-                  if (totalPages <= 5) {
-                    pageNum = i + 1;
-                  } else if (page <= 3) {
-                    pageNum = i + 1;
-                  } else if (page >= totalPages - 2) {
-                    pageNum = totalPages - 4 + i;
-                  } else {
-                    pageNum = page - 2 + i;
-                  }
-                  return (
-                    <button
-                      key={pageNum}
-                      onClick={() => setPage(pageNum)}
-                      className={`w-8 h-8 sm:w-9 sm:h-9 text-xs sm:text-sm font-medium rounded-lg cursor-pointer transition-colors ${
-                        page === pageNum
-                          ? 'bg-indigo-600 text-white'
-                          : 'text-gray-600 hover:bg-gray-100'
-                      }`}
-                    >
-                      {pageNum}
-                    </button>
-                  );
-                })}
-              </div>
-              <button
-                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-                className="px-2.5 sm:px-3 py-2 text-xs sm:text-sm font-medium rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
-              >
-                Próxima →
-              </button>
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 mt-2">
+                  <button
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                    className="px-2.5 sm:px-3 py-2 text-xs sm:text-sm font-medium rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                  >
+                    ← Anterior
+                  </button>
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNum;
+                      if (totalPages <= 5) pageNum = i + 1;
+                      else if (page <= 3) pageNum = i + 1;
+                      else if (page >= totalPages - 2) pageNum = totalPages - 4 + i;
+                      else pageNum = page - 2 + i;
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => setPage(pageNum)}
+                          className={`w-8 h-8 sm:w-9 sm:h-9 text-xs sm:text-sm font-medium rounded-lg cursor-pointer transition-colors ${
+                            page === pageNum ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:bg-gray-100'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <button
+                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                    disabled={page === totalPages}
+                    className="px-2.5 sm:px-3 py-2 text-xs sm:text-sm font-medium rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                  >
+                    Próxima →
+                  </button>
+                </div>
+              )}
             </div>
-          )}
+
+            {/* Right-side fixed detail panel (desktop) */}
+            <div className="lg:col-span-5">
+              <JobDetailPanelDesktop
+                job={detailJob}
+                onApply={handleApply}
+                applied={detailJob ? isJobApplied(detailJob.id) : false}
+                isClosed={detailJob?.status === 'encerrada'}
+                hasResume={hasResume}
+              />
+            </div>
+          </div>
         </>
       )}
+
+      {/* Mobile bottom sheet */}
+      <JobDetailSheetMobile
+        job={detailJob}
+        isOpen={mobileSheetOpen}
+        onClose={() => setMobileSheetOpen(false)}
+        onApply={handleApply}
+        applied={detailJob ? isJobApplied(detailJob.id) : false}
+        isClosed={detailJob?.status === 'encerrada'}
+        hasResume={hasResume}
+      />
 
       {/* Resume selector modal */}
       <ResumeSelectorModal

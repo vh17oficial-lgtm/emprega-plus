@@ -9,6 +9,9 @@ import { generateJobs } from '../utils/jobGenerator';
 const AppContext = createContext();
 
 // --- Supabase ↔ JS mapping helpers ---
+// Cache: after first failure with `escolaridade` column, skip sending it on subsequent inserts/updates
+let _escolaridadeColumnMissing = false;
+
 function jobFromRow(r) {
   return {
     id: r.id, title: r.title, company: r.company, logo: r.logo || '',
@@ -23,16 +26,24 @@ function jobFromRow(r) {
 }
 
 function jobToRow(j) {
-  return {
+  const row = {
     title: j.title, company: j.company, logo: j.logo || '',
     location: j.location || '', description: j.description || '',
     category: j.category || '', work_type: j.workType || '', level: j.level || '',
-    escolaridade: j.escolaridade || '',
     salary: j.salary || '', carga_horaria: j.cargaHoraria || '',
     badges: j.badges || [], informal: !!j.informal,
     status: j.status || 'ativa',
   };
+  if (!_escolaridadeColumnMissing) row.escolaridade = j.escolaridade || '';
+  return row;
 }
+
+function isMissingEscolaridadeError(error) {
+  if (!error) return false;
+  const msg = (error.message || '') + ' ' + (error.details || '') + ' ' + (error.hint || '');
+  return /escolaridade/i.test(msg) && /(column|schema|cache|not found|does not exist|PGRST204)/i.test(msg);
+}
+
 
 function appFromRow(r) {
   return {
@@ -151,12 +162,26 @@ export function AppProvider({ children }) {
           setJobs(jobsRes.data.map(jobFromRow));
         } else if (!jobsRes.error) {
           // Seed initial jobs
-          const seedRows = initialJobs.map(j => ({
+          const buildSeedRows = () => initialJobs.map(j => ({
             ...jobToRow(j),
             created_at: new Date(Date.now() - Math.random() * 5 * 86400000).toISOString(),
           }));
-          const { data: seeded } = await supabase.from('jobs').insert(seedRows).select();
-          if (seeded && !cancelled) setJobs(seeded.map(jobFromRow));
+          let seedRows = buildSeedRows();
+          let { data: seeded, error: seedErr } = await supabase.from('jobs').insert(seedRows).select();
+          if (seedErr && isMissingEscolaridadeError(seedErr)) {
+            _escolaridadeColumnMissing = true;
+            console.warn('[seed] Coluna `escolaridade` ausente. Reinserindo sem ela.');
+            seedRows = buildSeedRows();
+            ({ data: seeded } = await supabase.from('jobs').insert(seedRows).select());
+          }
+          if (seeded && !cancelled) {
+            const merged = seeded.map((row, idx) => {
+              const j = jobFromRow(row);
+              if (_escolaridadeColumnMissing && initialJobs[idx]) j.escolaridade = initialJobs[idx].escolaridade || '';
+              return j;
+            });
+            setJobs(merged);
+          }
         }
 
         // Plans
@@ -170,7 +195,12 @@ export function AppProvider({ children }) {
         // Single-row configs — use data or keep defaults
         if (dispatchRes.data?.config) setAutoDispatchConfig({ ...defaultAutoDispatchConfig, ...dispatchRes.data.config });
         if (upsellRes.data?.config) setUpsellTexts({ ...defaultUpsellTexts, ...upsellRes.data.config });
-        if (siteRes.data?.config) setSiteConfig({ ...defaultSiteConfig, ...siteRes.data.config });
+        if (siteRes.data?.config) {
+          setSiteConfig({ ...defaultSiteConfig, ...siteRes.data.config });
+          if (siteRes.data.config.landingTexts) {
+            setLandingTexts({ ...initialLandingTexts, ...siteRes.data.config.landingTexts });
+          }
+        }
         if (rotationRes.data?.config) setRotationConfig({ ...defaultRotationConfig, ...rotationRes.data.config });
         if (socialRes.data?.config) setSocialProofConfig({ ...defaultSocialProof, ...socialRes.data.config });
 
@@ -298,24 +328,54 @@ export function AppProvider({ children }) {
     setAppliedJobs([]);
     const { error: delErr } = await supabase.from('jobs').delete().neq('id', 0);
     if (delErr) { console.error('Erro ao deletar vagas:', delErr.message, delErr); alert('Erro ao deletar vagas: ' + delErr.message); return 0; }
-    const rows = newJobs.map(j => ({
+    const buildRows = () => newJobs.map(j => ({
       ...jobToRow(j),
       created_at: new Date(Date.now() - Math.random() * 5 * 86400000).toISOString(),
     }));
+    let rows = buildRows();
     // Insert in batches of 200 to avoid payload limits
     let allInserted = [];
+    let migrationWarned = false;
     for (let i = 0; i < rows.length; i += 200) {
       const batch = rows.slice(i, i + 200);
-      const { data, error: insErr } = await supabase.from('jobs').insert(batch).select();
+      let { data, error: insErr } = await supabase.from('jobs').insert(batch).select();
+      // If escolaridade column missing, mark + retry batch without it
+      if (insErr && isMissingEscolaridadeError(insErr)) {
+        _escolaridadeColumnMissing = true;
+        if (!migrationWarned) {
+          migrationWarned = true;
+          console.warn('[regenerateAllJobs] Coluna `escolaridade` ausente no DB. Reinserindo sem ela. Execute add-escolaridade-column.sql no Supabase SQL Editor para habilitar filtro por escolaridade.');
+        }
+        rows = buildRows(); // rebuild without escolaridade
+        const retryBatch = rows.slice(i, i + 200);
+        ({ data, error: insErr } = await supabase.from('jobs').insert(retryBatch).select());
+      }
       if (insErr) { console.error('Erro ao inserir vagas (lote):', insErr.message, insErr); alert('Erro ao inserir vagas: ' + insErr.message); break; }
       if (data) allInserted = allInserted.concat(data);
     }
-    if (allInserted.length > 0) setJobs(allInserted.map(jobFromRow));
+    if (allInserted.length > 0) {
+      // Merge runtime escolaridade back from generator if column was missing in DB
+      const merged = allInserted.map((row, idx) => {
+        const j = jobFromRow(row);
+        if (_escolaridadeColumnMissing && newJobs[idx]) j.escolaridade = newJobs[idx].escolaridade || '';
+        return j;
+      });
+      setJobs(merged);
+    }
+    if (migrationWarned) {
+      alert('⚠️ Vagas geradas com sucesso, mas a coluna `escolaridade` está faltando no seu banco Supabase.\n\nExecute o arquivo add-escolaridade-column.sql no SQL Editor do Supabase para habilitar o filtro por escolaridade.');
+    }
     return allInserted.length;
   };
 
-  const updateLandingTexts = (newTexts) => {
-    setLandingTexts(prev => ({ ...prev, ...newTexts }));
+  const updateLandingTexts = async (newTexts) => {
+    const merged = { ...landingTexts, ...newTexts };
+    setLandingTexts(merged);
+    // Persist inside site_config (reuses existing single-row config table)
+    const mergedSite = { ...siteConfig, landingTexts: merged };
+    setSiteConfig(mergedSite);
+    const { error } = await supabase.from('site_config').upsert({ id: 1, config: mergedSite, updated_at: new Date().toISOString() });
+    if (error) { console.error('Erro ao salvar landing texts:', error); alert('Erro ao salvar textos: ' + error.message); }
   };
 
   // ============================================
@@ -503,8 +563,7 @@ export function AppProvider({ children }) {
   // COMPANIES / TESTIMONIALS / VIDEOS
   // ============================================
   const updateCompanies = async (newCompanies) => {
-    setCompanies(newCompanies);
-    // Propagate logo changes to jobs
+    // Propagate logo changes to jobs (local state + DB)
     const logoMap = new Map();
     newCompanies.forEach(c => logoMap.set(c.name, c.logo || ''));
     setJobs(prev => {
@@ -515,7 +574,6 @@ export function AppProvider({ children }) {
         return j;
       });
       if (changed) {
-        // Also update logos in Supabase
         updated.forEach(j => {
           const orig = prev.find(p => p.id === j.id);
           if (orig && orig.logo !== j.logo) supabase.from('jobs').update({ logo: j.logo }).eq('id', j.id);
@@ -523,33 +581,81 @@ export function AppProvider({ children }) {
       }
       return changed ? updated : prev;
     });
-    // Sync companies to Supabase
-    await supabase.from('companies').delete().neq('id', 0);
-    const rows = newCompanies.map(({ id, ...rest }) => rest);
-    if (rows.length > 0) {
-      const { data } = await supabase.from('companies').insert(rows).select();
-      if (data) setCompanies(data);
+
+    // Separate into upserts (existing rows) and inserts (new rows without id)
+    const toUpsert = newCompanies.filter(c => c.id).map(c => ({
+      id: c.id, name: c.name, logo: c.logo || '', active: c.active !== false,
+    }));
+    const toInsert = newCompanies.filter(c => !c.id).map(c => ({
+      name: c.name, logo: c.logo || '', active: c.active !== false,
+    }));
+    // Delete rows that exist in DB but were removed from the draft
+    const newIds = new Set(toUpsert.map(c => c.id));
+    const { data: currentRows } = await supabase.from('companies').select('id');
+    const toDelete = (currentRows || []).filter(r => !newIds.has(r.id)).map(r => r.id);
+    if (toDelete.length > 0) {
+      const { error: delErr } = await supabase.from('companies').delete().in('id', toDelete);
+      if (delErr) { console.error('Erro ao deletar empresas:', delErr); alert('Erro ao deletar empresas: ' + delErr.message); }
     }
+    if (toUpsert.length > 0) {
+      const { error: upErr } = await supabase.from('companies').upsert(toUpsert);
+      if (upErr) { console.error('Erro ao atualizar empresas:', upErr); alert('Erro ao atualizar empresas: ' + upErr.message); return; }
+    }
+    let insertedRows = [];
+    if (toInsert.length > 0) {
+      const { data, error: insErr } = await supabase.from('companies').insert(toInsert).select();
+      if (insErr) { console.error('Erro ao inserir empresas:', insErr); alert('Erro ao inserir empresas: ' + insErr.message); return; }
+      insertedRows = data || [];
+    }
+    // Re-fetch to get authoritative state (handles IDs for new rows)
+    const { data: finalRows } = await supabase.from('companies').select('*').order('id');
+    setCompanies(finalRows || [...toUpsert, ...insertedRows]);
   };
 
   const updateTestimonials = async (t) => {
     setTestimonials(t);
-    await supabase.from('testimonials').delete().neq('id', 0);
-    const rows = t.map(({ id, ...rest }) => rest);
-    if (rows.length > 0) {
-      const { data } = await supabase.from('testimonials').insert(rows).select();
-      if (data) setTestimonials(data);
+    const toUpsert = t.filter(x => x.id);
+    const toInsert = t.filter(x => !x.id).map(({ id, ...rest }) => rest);
+    const newIds = new Set(toUpsert.map(x => x.id));
+    const { data: currentRows } = await supabase.from('testimonials').select('id');
+    const toDelete = (currentRows || []).filter(r => !newIds.has(r.id)).map(r => r.id);
+    if (toDelete.length > 0) {
+      const { error } = await supabase.from('testimonials').delete().in('id', toDelete);
+      if (error) { console.error('Erro ao deletar depoimentos:', error); alert('Erro ao deletar depoimentos: ' + error.message); }
     }
+    if (toUpsert.length > 0) {
+      const { error } = await supabase.from('testimonials').upsert(toUpsert);
+      if (error) { console.error('Erro depoimentos:', error); alert('Erro depoimentos: ' + error.message); return; }
+    }
+    if (toInsert.length > 0) {
+      const { error } = await supabase.from('testimonials').insert(toInsert);
+      if (error) { console.error('Erro inserir depoimentos:', error); alert('Erro inserir depoimentos: ' + error.message); return; }
+    }
+    const { data: finalRows } = await supabase.from('testimonials').select('*').order('id');
+    if (finalRows) setTestimonials(finalRows);
   };
 
   const updateLandingVideos = async (v) => {
     setLandingVideos(v);
-    await supabase.from('videos').delete().neq('id', 0);
-    const rows = v.map(({ id, ...rest }) => rest);
-    if (rows.length > 0) {
-      const { data } = await supabase.from('videos').insert(rows).select();
-      if (data) setLandingVideos(data);
+    const toUpsert = v.filter(x => x.id);
+    const toInsert = v.filter(x => !x.id).map(({ id, ...rest }) => rest);
+    const newIds = new Set(toUpsert.map(x => x.id));
+    const { data: currentRows } = await supabase.from('videos').select('id');
+    const toDelete = (currentRows || []).filter(r => !newIds.has(r.id)).map(r => r.id);
+    if (toDelete.length > 0) {
+      const { error } = await supabase.from('videos').delete().in('id', toDelete);
+      if (error) { console.error('Erro ao deletar vídeos:', error); alert('Erro ao deletar vídeos: ' + error.message); }
     }
+    if (toUpsert.length > 0) {
+      const { error } = await supabase.from('videos').upsert(toUpsert);
+      if (error) { console.error('Erro vídeos:', error); alert('Erro vídeos: ' + error.message); return; }
+    }
+    if (toInsert.length > 0) {
+      const { error } = await supabase.from('videos').insert(toInsert);
+      if (error) { console.error('Erro inserir vídeos:', error); alert('Erro inserir vídeos: ' + error.message); return; }
+    }
+    const { data: finalRows } = await supabase.from('videos').select('*').order('id');
+    if (finalRows) setLandingVideos(finalRows);
   };
 
   // ============================================
@@ -572,27 +678,39 @@ export function AppProvider({ children }) {
     }
 
     // Generate new jobs
-    let newJobRows = generateJobs(count, 1).map(j => ({
-      ...jobToRow(j),
-      created_at: now,
-    }));
+    const newJobsRaw = generateJobs(count, 1);
+    const buildRotationRows = () => newJobsRaw.map(j => {
+      const row = { ...jobToRow(j), created_at: now };
+      // Apply company logos
+      if (companies.length > 0) {
+        const custom = companies.find(c => c.name === j.company)?.logo;
+        if (custom) row.logo = custom;
+      }
+      return row;
+    });
+    let newJobRows = buildRotationRows();
 
-    // Apply company logos
-    if (companies.length > 0) {
-      const logoMap = new Map();
-      companies.forEach(c => { if (c.logo) logoMap.set(c.name, c.logo); });
-      newJobRows = newJobRows.map(j => {
-        const custom = logoMap.get(j.company);
-        return custom ? { ...j, logo: custom } : j;
-      });
+    let { data: inserted, error: insErr } = await supabase.from('jobs').insert(newJobRows).select();
+    if (insErr && isMissingEscolaridadeError(insErr)) {
+      _escolaridadeColumnMissing = true;
+      console.warn('[performRotation] Coluna `escolaridade` ausente no DB. Reinserindo sem ela.');
+      newJobRows = buildRotationRows(); // rebuild without escolaridade
+      ({ data: inserted, error: insErr } = await supabase.from('jobs').insert(newJobRows).select());
+    }
+    if (insErr) {
+      console.error('[performRotation] Erro ao inserir vagas novas:', insErr);
+      return;
     }
 
-    const { data: inserted } = await supabase.from('jobs').insert(newJobRows).select();
-
     // Update local state
+    const insertedMerged = (inserted || []).map((row, idx) => {
+      const j = jobFromRow(row);
+      if (_escolaridadeColumnMissing && newJobsRaw[idx]) j.escolaridade = newJobsRaw[idx].escolaridade || '';
+      return j;
+    });
     setJobs(prev => [
       ...prev.map(j => toCloseIds.has(j.id) ? { ...j, status: 'encerrada', closedAt: now } : j),
-      ...(inserted ? inserted.map(jobFromRow) : []),
+      ...insertedMerged,
     ]);
 
     setAppliedJobs(prev => prev.map(a =>

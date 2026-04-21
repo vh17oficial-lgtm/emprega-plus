@@ -33,6 +33,7 @@ CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(status);
 ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
 
 -- Users can read their own payments
+DROP POLICY IF EXISTS "Users can read own payments" ON payments;
 CREATE POLICY "Users can read own payments"
   ON payments FOR SELECT
   TO authenticated
@@ -40,6 +41,7 @@ CREATE POLICY "Users can read own payments"
 
 -- Service role manages all (insert/update from API routes)
 -- Note: service_role bypasses RLS by default, but explicit policy for clarity
+DROP POLICY IF EXISTS "Service role full access" ON payments;
 CREATE POLICY "Service role full access"
   ON payments FOR ALL
   TO service_role

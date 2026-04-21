@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useAppContext } from '../../context/AppContext';
 
 const SECTIONS = [
@@ -15,9 +16,13 @@ export default function SectionVisibilityManager() {
   const { siteConfig, updateSiteConfig } = useAppContext();
   const sections = siteConfig.sections || {};
 
-  const toggle = (key) => {
-    const current = sections[key] !== false; // default true
-    updateSiteConfig({ sections: { ...sections, [key]: !current } });
+  const [pending, setPending] = useState(null);
+  const toggle = async (key) => {
+    if (pending) return;
+    setPending(key);
+    const current = sections[key] !== false;
+    try { await updateSiteConfig({ sections: { ...sections, [key]: !current } }); }
+    finally { setPending(null); }
   };
 
   return (
@@ -41,7 +46,8 @@ export default function SectionVisibilityManager() {
               </div>
               <button
                 onClick={() => toggle(s.key)}
-                className={`relative w-10 h-5 rounded-full transition-colors cursor-pointer ${visible ? 'bg-indigo-600' : 'bg-gray-300'}`}
+                disabled={pending === s.key}
+                className={`relative w-10 h-5 rounded-full transition-colors cursor-pointer disabled:opacity-60 ${visible ? 'bg-indigo-600' : 'bg-gray-300'}`}
               >
                 <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${visible ? 'translate-x-5' : ''}`} />
               </button>

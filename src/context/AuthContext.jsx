@@ -243,20 +243,12 @@ export function AuthProvider({ children }) {
     return !!data;
   };
 
-  const addSendCredits = async (amount, planName, planPrice) => {
-    // Optimistic update
-    setUser((prev) => prev ? {
-      ...prev,
-      sendCredits: (prev.sendCredits || 0) + amount,
-    } : prev);
-    const { error } = await supabase.rpc('add_send_credits', {
-      p_amount: amount,
-      p_plan_name: planName,
-      p_plan_price: planPrice,
-    });
-    if (error) console.error('Erro ao adicionar créditos:', error.message);
-    _refreshProfile();
-  };
+  // Legacy client-side "purchase" methods removed for security.
+  // All paid upgrades now flow exclusively through:
+  //   PaymentModal -> /api/create-payment -> MisticPay -> webhook -> fulfill_payment (service_role)
+  // These stubs only refresh the profile so existing UI callers keep working
+  // after payment confirmation (webhook already granted the benefit server-side).
+  const addSendCredits = async () => { _refreshProfile(); };
 
   // --- Auto dispatch (via secure RPC) ---
   const hasAutoDispatchAccess = () => !!user?.autoDispatchAccess;
@@ -279,46 +271,17 @@ export function AuthProvider({ children }) {
     return data || 0;
   };
 
-  const purchaseAutoDispatch = async (initialDailyLimit, price) => {
-    setUser((prev) => prev ? { ...prev, autoDispatchAccess: true } : prev);
-    const { error } = await supabase.rpc('purchase_auto_dispatch', {
-      p_daily_limit: initialDailyLimit,
-      p_price: price,
-    });
-    if (error) console.error('Erro ao comprar dispatch:', error.message);
-    _refreshProfile();
-  };
+  const purchaseAutoDispatch = async () => { _refreshProfile(); };
+  const upgradeDailyLimit = async () => { _refreshProfile(); };
 
-  const upgradeDailyLimit = async (amount, label, price) => {
-    const { error } = await supabase.rpc('upgrade_daily_limit', {
-      p_amount: amount,
-      p_label: label,
-      p_price: price,
-    });
-    if (error) console.error('Erro ao upgrade dispatch:', error.message);
-    _refreshProfile();
-  };
-
-  // --- Priority resume (via secure RPC) ---
+  // --- Priority resume ---
   const hasPurchased = () => (user?.purchaseHistory || []).length > 0;
   const isPriorityUser = () => !!user?.isPriorityUser;
+  const purchasePriority = async () => { _refreshProfile(); };
 
-  const purchasePriority = async () => {
-    setUser((prev) => prev ? { ...prev, isPriorityUser: true } : prev);
-    const { error } = await supabase.rpc('purchase_priority');
-    if (error) console.error('Erro ao comprar prioridade:', error.message);
-    _refreshProfile();
-  };
-
-  // --- PDF download access (via secure RPC) ---
+  // --- PDF download access ---
   const hasPdfAccess = () => !!user?.pdfDownloadAccess;
-
-  const purchasePdfAccess = async (price) => {
-    setUser((prev) => prev ? { ...prev, pdfDownloadAccess: true } : prev);
-    const { error } = await supabase.rpc('purchase_pdf_access', { p_price: price });
-    if (error) console.error('Erro ao comprar PDF:', error.message);
-    _refreshProfile();
-  };
+  const purchasePdfAccess = async () => { _refreshProfile(); };
 
   // --- Profile ---
   const updateProfile = async (updates) => {

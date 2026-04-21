@@ -151,7 +151,8 @@ export default async function handler(req, res) {
     }
 
     // Call MisticPay API
-    const webhookUrl = 'https://www.empregaplus.com/api/payment-webhook';
+    const webhookUrl = process.env.PAYMENT_WEBHOOK_URL
+      || `https://${req.headers.host}/api/payment-webhook`;
     const misticRes = await fetch('https://api.misticpay.com/api/transactions/create', {
       method: 'POST',
       headers: {

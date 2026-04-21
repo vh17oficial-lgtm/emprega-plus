@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS admin_audit_logs (
 -- RLS for audit logs (only admins can read/write)
 ALTER TABLE admin_audit_logs ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Admins can read audit logs" ON admin_audit_logs;
 CREATE POLICY "Admins can read audit logs"
   ON admin_audit_logs FOR SELECT
   TO authenticated
@@ -22,6 +23,7 @@ CREATE POLICY "Admins can read audit logs"
     EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
   );
 
+DROP POLICY IF EXISTS "Admins can insert audit logs" ON admin_audit_logs;
 CREATE POLICY "Admins can insert audit logs"
   ON admin_audit_logs FOR INSERT
   TO authenticated
@@ -47,6 +49,7 @@ CREATE TABLE IF NOT EXISTS coupons (
 -- RLS for coupons (admins full access, authenticated can read active)
 ALTER TABLE coupons ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Admins can manage coupons" ON coupons;
 CREATE POLICY "Admins can manage coupons"
   ON coupons FOR ALL
   TO authenticated
@@ -57,6 +60,7 @@ CREATE POLICY "Admins can manage coupons"
     EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
   );
 
+DROP POLICY IF EXISTS "Users can read active coupons" ON coupons;
 CREATE POLICY "Users can read active coupons"
   ON coupons FOR SELECT
   TO authenticated

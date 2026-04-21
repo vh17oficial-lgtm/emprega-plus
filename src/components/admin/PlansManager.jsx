@@ -25,8 +25,11 @@ export default function PlansManager() {
     setTimeout(() => setSaved(false), 2000);
   };
 
+  const [upsellSaved, setUpsellSaved] = useState(false);
   const updateUpsellPrice = async (plan, field, value) => {
     await updateSiteConfig({ [plan]: { ...siteConfig[plan], [field]: value } });
+    setUpsellSaved(true);
+    setTimeout(() => setUpsellSaved(false), 1500);
   };
 
   const inputClass = 'w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none';
@@ -35,7 +38,7 @@ export default function PlansManager() {
     <div className="space-y-6">
       {/* Upsell Prices */}
       <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-xl p-5">
-        <h3 className="text-lg font-semibold text-gray-900 mb-1">💰 Preços dos Upsells</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-1">💰 Preços dos Upsells {upsellSaved && <span className="text-xs text-green-600 font-normal ml-2">✓ Salvo</span>}</h3>
         <p className="text-sm text-gray-500 mb-4">Configure os preços dos produtos premium da plataforma.</p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
