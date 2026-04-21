@@ -175,7 +175,7 @@ export default function CardVaga({ job, onApply, applied, hasResume = true, jobV
           )}
         </div>
 
-        <div className="shrink-0 w-full sm:w-auto">
+        <div className="shrink-0 w-full sm:w-auto flex flex-col gap-2">
           {isClosed ? (
             <span className="inline-flex items-center justify-center gap-2 bg-gray-100 text-gray-500 text-xs font-medium px-4 py-2.5 rounded-xl w-full sm:w-auto border border-gray-200">
               Vaga encerrada
@@ -202,6 +202,17 @@ export default function CardVaga({ job, onApply, applied, hasResume = true, jobV
               🚀 CANDIDATAR-SE
             </button>
           )}
+
+          {/* Mobile-only: explicit details button */}
+          <button
+            onClick={(e) => { e.stopPropagation(); onSelect?.(job); }}
+            className="lg:hidden inline-flex items-center justify-center gap-1.5 bg-white border border-gray-200 text-gray-700 text-xs font-semibold px-4 py-2.5 rounded-xl cursor-pointer hover:bg-gray-50 hover:border-indigo-300 transition-all duration-200 w-full"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Ver mais detalhes
+          </button>
         </div>
       </div>
     </div>
