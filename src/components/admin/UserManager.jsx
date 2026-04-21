@@ -1,13 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { supabase } from '../../lib/supabase';
 
 export default function UserManager() {
-  const { getAllUsers, adminUpdateUser } = useAuth();
+  const { user: currentUser, getAllUsers, adminUpdateUser } = useAuth();
   const [users, setUsers] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [creditInputs, setCreditInputs] = useState({});
   const [limitInputs, setLimitInputs] = useState({});
   const [feedback, setFeedback] = useState({});
+  const [deletingId, setDeletingId] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null); // user object
 
   const loadUsers = useCallback(async () => {
     setLoadingUsers(true);
@@ -74,6 +77,29 @@ export default function UserManager() {
     loadUsers();
   };
 
+  const handleDelete = async (u) => {
+    setDeletingId(u.id);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) throw new Error('Sessão expirada');
+
+      const res = await fetch('/api/admin-delete-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ userId: u.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erro ao excluir');
+
+      setUsers((prev) => prev.filter((x) => x.id !== u.id));
+      setConfirmDelete(null);
+    } catch (err) {
+      showFeedback(u.id, `Erro: ${err.message}`);
+    }
+    setDeletingId(null);
+  };
+
   const inputClass = 'px-3 py-1.5 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none';
 
   if (loadingUsers) {
@@ -137,6 +163,11 @@ export default function UserManager() {
                     ? u.dailyDispatchUnlimited ? 'Ilimitado' : `${u.dailyDispatchLimit}/dia`
                     : 'Bloqueado'}
                 </span>
+                {u.role === 'admin' && (
+                  <span className="text-xs bg-amber-50 text-amber-700 px-2.5 py-1 rounded-full font-medium border border-amber-200">
+                    👑 Admin
+                  </span>
+                )}
               </div>
             </div>
 
@@ -207,9 +238,66 @@ export default function UserManager() {
                 </>
               )}
             </div>
+
+            {/* Danger zone: delete account */}
+            {u.role !== 'admin' && u.id !== currentUser?.id && (
+              <div className="mt-3 pt-3 border-t border-gray-100 flex justify-end">
+                <button
+                  onClick={() => setConfirmDelete(u)}
+                  className="text-xs font-semibold px-3 py-1.5 rounded-lg cursor-pointer transition-colors bg-red-50 text-red-600 hover:bg-red-100 border border-red-200"
+                >
+                  🗑️ Excluir conta
+                </button>
+              </div>
+            )}
           </div>
         ))}
       </div>
+
+      {/* Confirm delete modal */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={deletingId ? undefined : () => setConfirmDelete(null)}
+          />
+          <div className="relative bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden">
+            <div className="p-6">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl">⚠️</span>
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 text-center mb-2">
+                Excluir conta?
+              </h3>
+              <p className="text-sm text-gray-500 text-center mb-1">
+                <strong className="text-gray-900">{confirmDelete.nome}</strong>
+              </p>
+              <p className="text-xs text-gray-400 text-center mb-4 break-all">
+                {confirmDelete.email}
+              </p>
+              <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-center mb-5">
+                Esta ação é irreversível. Todos os dados, currículos e candidaturas serão perdidos.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setConfirmDelete(null)}
+                  disabled={!!deletingId}
+                  className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 text-sm font-semibold rounded-xl hover:bg-gray-200 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => handleDelete(confirmDelete)}
+                  disabled={!!deletingId}
+                  className="flex-1 px-4 py-2.5 bg-red-600 text-white text-sm font-bold rounded-xl hover:bg-red-700 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                >
+                  {deletingId === confirmDelete.id ? 'Excluindo...' : 'Sim, excluir'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
