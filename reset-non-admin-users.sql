@@ -9,6 +9,8 @@ DO $$
 DECLARE
   v_deleted INT := 0;
   v_admins  INT := 0;
+  v_admin_ids uuid[];
+  v_tbl text;
 BEGIN
   -- Count admins (sanity check)
   SELECT COUNT(*) INTO v_admins
@@ -19,38 +21,15 @@ BEGIN
     RAISE EXCEPTION 'ABORT: no admin profiles found. Refusing to delete everyone.';
   END IF;
 
-  -- Delete auth users whose profile is not admin (or who have no profile)
-  WITH victims AS (
-    SELECT au.id
-    FROM auth.users au
-    LEFT JOIN public.profiles p ON p.id = au.id
-    WHERE p.role IS DISTINCT FROM 'admin'
-  )
-  DELETE FROM auth.users
-  WHERE id IN (SELECT id FROM victims);
-
-  GET DIAGNOSTICS v_deleted = ROW_COUNT;
-
-  -- Safety: explicitly remove any orphan profiles that weren't cascaded
-  DELETE FROM public.profiles
-  WHERE role IS DISTINCT FROM 'admin'
-    AND id NOT IN (SELECT id FROM auth.users);
-
-  RAISE NOTICE 'Kept % admin(s). Deleted % non-admin user(s).', v_admins, v_deleted;
-END $$;
-
--- Optional: also clean up leftover rows in tables that may not have CASCADE.
--- Safe because admin-owned rows are preserved.
-DO $$
-DECLARE
-  v_tbl text;
-  v_admin_ids uuid[];
-BEGIN
   SELECT array_agg(id) INTO v_admin_ids FROM public.profiles WHERE role = 'admin';
 
+  -- STEP 1: Delete rows from every table that references users, for non-admins.
+  -- Tables with a user_id column:
   FOREACH v_tbl IN ARRAY ARRAY[
-    'applications','saved_resumes','payments','support_conversations',
-    'support_messages','support_tickets','tickets','ticket_messages'
+    'payments','applications','saved_resumes','support_conversations',
+    'support_messages','support_tickets','tickets','ticket_messages',
+    'user_coupons','user_job_views','user_saved_jobs','user_notifications',
+    'social_proof_events','audit_log'
   ] LOOP
     BEGIN
       EXECUTE format(
@@ -62,4 +41,16 @@ BEGIN
       WHEN undefined_column THEN NULL;
     END;
   END LOOP;
+
+  -- STEP 2: Delete non-admin profiles (FK profiles.id -> auth.users.id)
+  DELETE FROM public.profiles
+  WHERE role IS DISTINCT FROM 'admin';
+
+  -- STEP 3: Now safe to delete from auth.users
+  DELETE FROM auth.users
+  WHERE id <> ALL(v_admin_ids);
+
+  GET DIAGNOSTICS v_deleted = ROW_COUNT;
+
+  RAISE NOTICE 'Kept % admin(s). Deleted % non-admin auth user(s).', v_admins, v_deleted;
 END $$;
