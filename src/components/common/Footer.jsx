@@ -52,8 +52,19 @@ export default function Footer() {
           ))}
         </div>
 
-        <div className="border-t border-white/10 pt-6 text-center text-xs text-white/30">
-          © {new Date().getFullYear()} Emprega+. Todos os direitos reservados.
+        <div className="border-t border-white/10 pt-6 text-center">
+          <p className="text-xs text-white/40 mb-2">
+            Quer anunciar uma vaga? Entre em contato:{' '}
+            <a
+              href="mailto:empregaplusadm@gmail.com"
+              className="text-white/60 hover:text-white/90 underline underline-offset-2 transition-colors"
+            >
+              empregaplusadm@gmail.com
+            </a>
+          </p>
+          <p className="text-xs text-white/30">
+            © {new Date().getFullYear()} Emprega+. Todos os direitos reservados.
+          </p>
         </div>
       </div>
     </footer>
