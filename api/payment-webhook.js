@@ -76,33 +76,40 @@ export default async function handler(req, res) {
 
     // If state isn't clearly paid, verify with MisticPay server-to-server
     try {
-      const verifyRes = await fetch('https://api.misticpay.com/api/cashin/check', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'ci': misticClientId,
-          'cs': misticClientSecret,
-        },
-        body: JSON.stringify({ transactionId: payment.transaction_id }),
-      });
+      const idsToTry = [payment.mistic_transaction_id, payment.transaction_id].filter(Boolean);
+      let confirmedState = null;
+      let verifyData = null;
 
-      if (verifyRes.ok) {
-        const verifyData = await verifyRes.json();
-        const vInner = verifyData.data || verifyData;
-        const confirmedState = vInner.transactionState || vInner.state || vInner.status;
-        console.log('Webhook verify response:', JSON.stringify(verifyData));
+      for (const id of idsToTry) {
+        const verifyRes = await fetch('https://api.misticpay.com/api/cashin/check', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'ci': misticClientId,
+            'cs': misticClientSecret,
+          },
+          body: JSON.stringify({ transactionId: id }),
+        });
 
-        if (isPaidState(confirmedState)) {
-          const { data: result, error: fulfillError } = await supabase.rpc('fulfill_payment', {
-            p_payment_id: payment.id,
-          });
-          if (fulfillError) {
-            console.error('Webhook: fulfillment error:', fulfillError);
-            return res.status(200).json({ error: 'Fulfillment failed' });
-          }
-          console.log('Webhook: fulfilled via verify:', payment.id, result);
-          return res.status(200).json({ ok: true, fulfilled: true });
+        if (verifyRes.ok) {
+          verifyData = await verifyRes.json();
+          const vInner = verifyData.data || verifyData;
+          confirmedState = vInner.transactionState || vInner.state || vInner.status;
+          console.log(`Webhook verify response (id=${id}):`, JSON.stringify(verifyData));
+          if (isPaidState(confirmedState)) break;
         }
+      }
+
+      if (isPaidState(confirmedState)) {
+        const { data: result, error: fulfillError } = await supabase.rpc('fulfill_payment', {
+          p_payment_id: payment.id,
+        });
+        if (fulfillError) {
+          console.error('Webhook: fulfillment error:', fulfillError);
+          return res.status(200).json({ error: 'Fulfillment failed' });
+        }
+        console.log('Webhook: fulfilled via verify:', payment.id, result);
+        return res.status(200).json({ ok: true, fulfilled: true });
       }
     } catch (verifyErr) {
       console.error('Webhook: verify call failed:', verifyErr);

@@ -26,6 +26,7 @@ export default function PaymentModal({ isOpen, onClose, plan, productType, produ
   const [paymentId, setPaymentId] = useState(null);
   const [timeLeft, setTimeLeft] = useState(EXPIRE_MINUTES * 60);
   const [copied, setCopied] = useState(false);
+  const [manualChecking, setManualChecking] = useState(false);
   const pollRef = useRef(null);
   const timerRef = useRef(null);
 
@@ -84,20 +85,42 @@ export default function PaymentModal({ isOpen, onClose, plan, productType, produ
   }, [stopTimer, stopPolling]);
 
   // Start polling for payment status
+  const checkPaymentNow = useCallback(async (pId) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) return null;
+
+    const res = await fetch('/api/check-payment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ paymentId: pId }),
+    });
+    return res.json();
+  }, []);
+
+  const handleManualCheck = useCallback(async () => {
+    if (!paymentId || manualChecking) return;
+    setManualChecking(true);
+    try {
+      const data = await checkPaymentNow(paymentId);
+      if (data?.status === 'completed') {
+        stopPolling();
+        stopTimer();
+        setStep('success');
+        setTimeout(() => { onComplete(); }, 1800);
+      }
+    } catch (err) {
+      console.error('Manual check error:', err);
+    }
+    setManualChecking(false);
+  }, [paymentId, manualChecking, checkPaymentNow, stopPolling, stopTimer, onComplete]);
+
   const startPolling = useCallback((pId) => {
     stopPolling();
     const poll = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const token = session?.access_token;
-        if (!token) return;
-
-        const res = await fetch('/api/check-payment', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ paymentId: pId }),
-        });
-        const data = await res.json();
+        const data = await checkPaymentNow(pId);
+        if (!data) return;
 
         if (data.status === 'completed') {
           stopPolling();
@@ -116,7 +139,7 @@ export default function PaymentModal({ isOpen, onClose, plan, productType, produ
     };
     poll();
     pollRef.current = setInterval(poll, POLL_INTERVAL);
-  }, [stopPolling, stopTimer, onComplete]);
+  }, [stopPolling, stopTimer, onComplete, checkPaymentNow]);
 
   const handleGeneratePix = async () => {
     setError('');
@@ -350,13 +373,22 @@ export default function PaymentModal({ isOpen, onClose, plan, productType, produ
                 )}
 
                 {/* Polling indicator */}
-                <div className="flex items-center justify-center gap-2 text-xs text-gray-400 mb-4">
+                <div className="flex items-center justify-center gap-2 text-xs text-gray-400 mb-3">
                   <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
                   Aguardando pagamento...
                 </div>
+
+                {/* Manual check button */}
+                <button
+                  onClick={handleManualCheck}
+                  disabled={manualChecking}
+                  className="w-full mb-3 px-3 py-2.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl text-xs font-bold hover:bg-emerald-100 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                >
+                  {manualChecking ? 'Verificando...' : '✅ Já paguei, verificar agora'}
+                </button>
 
                 <p className="text-center text-[10px] text-gray-300">
                   🔒 Pagamento seguro via Pix • Confirmação automática

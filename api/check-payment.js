@@ -7,46 +7,42 @@ const misticClientSecret = process.env.MISTICPAY_CLIENT_SECRET;
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-// Check with MisticPay if a transaction is paid
-async function verifyWithMisticPay(transactionId) {
-  try {
-    // Try multiple auth approaches for the check endpoint
-    const headers = { 'Content-Type': 'application/json' };
+// Check with MisticPay if a transaction is paid.
+// Tries multiple endpoints, both IDs (mistic + ours), and both auth schemes.
+async function verifyWithMisticPay({ misticId, ourId }) {
+  const endpoints = [
+    'https://api.misticpay.com/api/cashin/check',
+    'https://api.misticpay.com/api/transactions/check',
+    'https://api.misticpay.com/api/transactions/status',
+  ];
+  const ids = [misticId, ourId].filter(Boolean);
+  const headerVariants = [
+    { 'ci': misticClientId, 'cs': misticClientSecret },
+    { 'x-api-key': misticClientSecret },
+  ];
 
-    // Approach 1: ci/cs headers (same as create)
-    const res1 = await fetch('https://api.misticpay.com/api/cashin/check', {
-      method: 'POST',
-      headers: { ...headers, 'ci': misticClientId, 'cs': misticClientSecret },
-      body: JSON.stringify({ transactionId }),
-    });
-
-    if (res1.ok) {
-      const data = await res1.json();
-      const inner = data.data || data;
-      console.log('MisticPay check response:', JSON.stringify(data));
-      return inner;
+  for (const endpoint of endpoints) {
+    for (const id of ids) {
+      for (const authHeaders of headerVariants) {
+        try {
+          const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...authHeaders },
+            body: JSON.stringify({ transactionId: id }),
+          });
+          if (!res.ok) continue;
+          const data = await res.json();
+          const inner = data.data || data;
+          console.log(`MisticPay check OK [${endpoint}] id=${id}:`, JSON.stringify(data));
+          return inner;
+        } catch (err) {
+          console.error(`MisticPay check error [${endpoint}] id=${id}:`, err.message);
+        }
+      }
     }
-
-    // Approach 2: x-api-key header
-    const res2 = await fetch('https://api.misticpay.com/api/cashin/check', {
-      method: 'POST',
-      headers: { ...headers, 'x-api-key': misticClientSecret },
-      body: JSON.stringify({ transactionId }),
-    });
-
-    if (res2.ok) {
-      const data = await res2.json();
-      const inner = data.data || data;
-      console.log('MisticPay check response (x-api-key):', JSON.stringify(data));
-      return inner;
-    }
-
-    console.error('MisticPay check failed:', res1.status, res2.status);
-    return null;
-  } catch (err) {
-    console.error('MisticPay check error:', err);
-    return null;
   }
+  console.error('MisticPay check: all attempts failed');
+  return null;
 }
 
 // Check if transaction state means "paid"
@@ -104,7 +100,10 @@ export default async function handler(req, res) {
 
     // ACTIVE VERIFICATION: if still pending, check MisticPay directly
     if (payment.status === 'pending') {
-      const misticResult = await verifyWithMisticPay(payment.transaction_id);
+      const misticResult = await verifyWithMisticPay({
+        misticId: payment.mistic_transaction_id,
+        ourId: payment.transaction_id,
+      });
 
       if (misticResult) {
         const state = misticResult.transactionState || misticResult.state || misticResult.status;
