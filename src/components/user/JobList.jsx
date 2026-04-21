@@ -9,6 +9,7 @@ import Modal from '../common/Modal';
 import UpsellModal from '../common/UpsellModal';
 import PaymentModal from '../common/PaymentModal';
 import { JobDetailPanelDesktop, JobDetailSheetMobile } from './JobDetailPanel';
+import PostJobModal from './PostJobModal';
 
 const emptyFilters = { search: '', category: '', workType: '', level: '', escolaridade: '', location: '' };
 
@@ -30,6 +31,16 @@ export default function JobList() {
   // Detail panel selection (desktop side panel + mobile bottom sheet)
   const [detailJob, setDetailJob] = useState(null);
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
+
+  // Post-job mock modal + success toast
+  const [postJobOpen, setPostJobOpen] = useState(false);
+  const [postJobToast, setPostJobToast] = useState(false);
+
+  useEffect(() => {
+    if (!postJobToast) return;
+    const t = setTimeout(() => setPostJobToast(false), 3200);
+    return () => clearTimeout(t);
+  }, [postJobToast]);
 
   const handleSelectJob = (job) => {
     setDetailJob(job);
@@ -172,7 +183,7 @@ export default function JobList() {
       )}
 
       {/* Activity banners */}
-      <div className="flex flex-wrap gap-3 mb-4">
+      <div className="flex flex-wrap items-center gap-3 mb-4">
         {getNewJobsToday() > 0 && (
           <div className="flex items-center gap-2 bg-emerald-50 text-emerald-700 text-xs font-medium px-3 py-2 rounded-lg border border-emerald-200">
             <span className="inline-block w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
@@ -183,6 +194,15 @@ export default function JobList() {
           <span className="inline-block w-2 h-2 bg-indigo-500 rounded-full animate-pulse" />
           +{getActivityCount()} pessoas se candidataram hoje
         </div>
+        <button
+          onClick={() => setPostJobOpen(true)}
+          className="ml-auto inline-flex items-center gap-1.5 text-xs font-medium text-gray-600 hover:text-indigo-700 border border-gray-200 hover:border-indigo-300 bg-white px-3 py-2 rounded-lg cursor-pointer transition-colors"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          Anunciar vaga
+        </button>
       </div>
 
       <JobFilters
@@ -349,6 +369,24 @@ export default function JobList() {
         productId={selectedPlan?.id}
         onComplete={handlePaymentComplete}
       />
+
+      {/* Post job (mock) modal */}
+      <PostJobModal
+        isOpen={postJobOpen}
+        onClose={() => setPostJobOpen(false)}
+        onSubmitted={() => setPostJobToast(true)}
+      />
+
+      {/* Post job success toast */}
+      {postJobToast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[80] bg-emerald-600 text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-2 text-sm font-medium animate-[pjtSlide_0.3s_ease-out]">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+          </svg>
+          Vaga enviada com sucesso
+          <style>{`@keyframes pjtSlide { from { opacity: 0; transform: translate(-50%, -20px); } to { opacity: 1; transform: translate(-50%, 0); } }`}</style>
+        </div>
+      )}
     </div>
   );
 }
